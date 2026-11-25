@@ -21,6 +21,7 @@
         "render.MixinEntityRenderer",
         "client.MixinMovementInputFromOptions",
         "client.MixinMinecraft",
+        "client.MixinKeyBinding",
         "render.MixinItemRenderer",
         "render.MixinGuiChat",
         "render.MixinGuiPlayerTabOverlay",

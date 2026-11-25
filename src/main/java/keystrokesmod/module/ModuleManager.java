@@ -381,6 +381,7 @@ public class ModuleManager {
         this.addModule(ignoreBlock = new IgnoreBlock());
         this.addModule(keepInventory = new KeepInventory());
         this.addModule(ghostBlock = new GhostBlock());
+        this.addModule(new keystrokesmod.module.impl.client.Keystrokes());
         // Zombies (ported from Meower, which ported them from ZombieCat/YogurtAddon)
         this.addModule(aimbot = new Aimbot());
         this.addModule(autoWrath = new AutoWrath());

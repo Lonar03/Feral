@@ -112,6 +112,8 @@ public final class OrnitheClientHooks {
         @Redirect(method = "tick", at = @At(value = "INVOKE", target = "Lorg/lwjgl/input/Mouse;next()Z", remap = false))
         private boolean feral$nextMouseEvent() {
             while (Mouse.next()) {
+                // Real mouse input only (Forge's MouseInputEvent): fake clicks post MouseEvent but never pass here
+                keystrokesmod.helper.KeyInputTracker.onRawMouseInput();
                 if (!ForgeEvents.MinecraftForge.EVENT_BUS.post(new ForgeEvents.MouseEvent())) {
                     return true;
                 }

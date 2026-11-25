@@ -310,6 +310,8 @@ public class ProfileManager implements IMinecraftInstance {
         } else if (module instanceof TargetHUD) {
             moduleInformation.addProperty("posX", ModuleManager.targetHUD.posX);
             moduleInformation.addProperty("posY", ModuleManager.targetHUD.posY);
+        } else if (module instanceof keystrokesmod.module.impl.client.Keystrokes) {
+            ((keystrokesmod.module.impl.client.Keystrokes) module).saveProfileData(moduleInformation);
         } else if (module instanceof PotionHUD) {
             PotionHUD potionHUD = (PotionHUD) module;
             moduleInformation.addProperty("posX", potionHUD.getPosX());
@@ -552,6 +554,8 @@ public class ProfileManager implements IMinecraftInstance {
                     int posY = moduleInformation.get("posY").getAsInt();
                     ModuleManager.targetHUD.posY = posY;
                 }
+            } else if (module instanceof keystrokesmod.module.impl.client.Keystrokes) {
+                ((keystrokesmod.module.impl.client.Keystrokes) module).loadProfileData(moduleInformation);
             } else if (module.getName().equals("Potion HUD")) {
                 PotionHUD potionHUD = (PotionHUD) module;
                 if (moduleInformation.has("relPosX") && moduleInformation.has("relPosY")) {
