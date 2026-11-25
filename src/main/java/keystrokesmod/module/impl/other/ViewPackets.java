@@ -71,7 +71,7 @@ public class ViewPackets extends Module {
             String string = (this.compactC03.isToggled() && packet instanceof PlayerMoveC2SPacket ? "&6" : "&d")
                     + packet.getClass().getSimpleName();
             LiteralText chatComponentText = new LiteralText(
-                    Utils.formatColor("&7[&dR&7]&r &7" + (b ? "Received" : "Sent") + " packet (t:&b" + tick + "&7): "));
+                    Utils.formatColor("&7[&dF&7]&r &7" + (b ? "Received" : "Sent") + " packet (t:&b" + tick + "&7): "));
             Style chatStyle = new Style();
             chatStyle.setHoverEvent(new HoverEvent(Action.SHOW_TEXT, new LiteralText(Utils.formatColor(s))));
             chatComponentText.append(new LiteralText(Utils.formatColor(string)).setStyle(chatStyle));

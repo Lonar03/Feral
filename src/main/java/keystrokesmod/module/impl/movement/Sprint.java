@@ -1,12 +1,12 @@
 package keystrokesmod.module.impl.movement;
 
+import keystrokesmod.mixin.impl.accessor.IAccessorKeyBinding;
 import keystrokesmod.module.Module;
 import keystrokesmod.module.setting.impl.ButtonSetting;
 import keystrokesmod.module.setting.impl.DescriptionSetting;
 import keystrokesmod.utility.Utils;
 import net.minecraft.client.gui.screen.game.inventory.ChestScreen;
 import net.minecraft.client.gui.screen.game.inventory.SurvivalInventoryScreen;
-import net.minecraft.client.options.KeyBinding;
 
 public class Sprint extends Module {
     private final ButtonSetting allowUsingItem;
@@ -28,7 +28,7 @@ public class Sprint extends Module {
     @Override
     public void onDisable() {
         if (Utils.nullCheck()) {
-            KeyBinding.set(mc.options.sprintKey.getKeyCode(), false);
+            setSprintPressed(false);
         }
     }
 
@@ -39,9 +39,14 @@ public class Sprint extends Module {
             boolean inInv = this.allowInInventory.isToggled()
                     && (mc.screen instanceof SurvivalInventoryScreen || mc.screen instanceof ChestScreen);
             if (inGame || inInv) {
-                KeyBinding.set(mc.options.sprintKey.getKeyCode(), true);
+                setSprintPressed(true);
             }
         }
+    }
+
+    // Press the binding itself: going through its key code hits another binding when sprint is unbound (code 0).
+    private void setSprintPressed(boolean pressed) {
+        ((IAccessorKeyBinding) mc.options.sprintKey).setPressed(pressed);
     }
 
     public boolean allowWhileUsingItem() {

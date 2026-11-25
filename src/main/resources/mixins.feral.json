@@ -51,6 +51,7 @@
         "accessor.IAccessorNetworkManager",
         "accessor.IAccessorEntity",
         "accessor.IAccessorMouseHelper",
+        "accessor.IAccessorKeyBinding",
         "accessor.IAccessorShaderGroup"
     ],
     "minVersion": "0.8"

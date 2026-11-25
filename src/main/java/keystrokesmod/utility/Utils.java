@@ -410,7 +410,7 @@ public class Utils implements IMinecraftInstance {
     private static void sendEntityDebugLine(StringBuilder report, String label, Object value) {
         String text = formatEntityDebugValue(value).replace("§", "\\u00a7");
         report.append(label).append(": ").append(text).append('\n');
-        mc.player.sendMessage(new LiteralText("§7[§dR§7] " + label + ": §b" + text));
+        mc.player.sendMessage(new LiteralText("§7[§dF§7] " + label + ": §b" + text));
     }
 
     private static String formatEntityDebugValue(Object value) {
@@ -837,14 +837,14 @@ public class Utils implements IMinecraftInstance {
 
     public static void sendMessage(String txt) {
         if (nullCheck()) {
-            String m = formatColor("&7[&dR&7]&r " + txt);
+            String m = formatColor("&7[&dF&7]&r " + txt);
             mc.player.sendMessage(new LiteralText(m));
         }
     }
 
     public static void sendMessageStr(String txt) {
         if (nullCheck()) {
-            String m = formatColor("&7[&dR&7]&r " + txt);
+            String m = formatColor("&7[&dF&7]&r " + txt);
             mc.player.sendMessage(new LiteralText(m));
         }
     }
@@ -856,7 +856,7 @@ public class Utils implements IMinecraftInstance {
 
     public static void sendDebugMessage(String message) {
         if (nullCheck()) {
-            mc.player.sendMessage(new LiteralText("§7[§dR§7]§r " + message));
+            mc.player.sendMessage(new LiteralText("§7[§dF§7]§r " + message));
         }
     }
 

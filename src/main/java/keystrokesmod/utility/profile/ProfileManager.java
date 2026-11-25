@@ -456,6 +456,11 @@ public class ProfileManager implements IMinecraftInstance {
             JsonObject moduleInformation = moduleJson.getAsJsonObject();
             String moduleName = moduleInformation.get("name").getAsString();
             if (moduleName != null && !moduleName.isEmpty()) {
+                if (moduleName.equals("Anti Shuffle")) {
+                    // Renamed to Unscramble (other), keep old Raven bS profiles working.
+                    moduleName = "Unscramble";
+                }
+
                 Module module = ModuleManager.getModule(moduleName);
                 if (module == null && moduleName.startsWith("sc-") && Feral.scriptManager != null) {
                     for (Module module1 : Feral.scriptManager.scripts.values()) {
