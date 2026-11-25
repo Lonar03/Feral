@@ -345,7 +345,8 @@ public class Script {
         fileCodeContents.append("import keystrokesmod.script.packet.clientbound.*;\n");
         fileCodeContents.append("import keystrokesmod.script.packet.serverbound.*;\n");
         String name = Utils.extractFileName(this.name);
-        String transformedCode = ScriptSourceTransformer.supportNestedTypes(code);
+        String transformedCode =
+                ScriptSourceTransformer.supportNestedTypes(ScriptSourceTransformer.remapRavenClasses(code));
         this.codeStr = fileCodeContents
                 + "@SuppressWarnings(\"unchecked\")public class "
                 + this.scriptName

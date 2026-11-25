@@ -8,9 +8,29 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 final class ScriptSourceTransformer {
     private ScriptSourceTransformer() {}
+
+    // Same idea as MeowerClient's remapRavenPackages: Feral keeps the keystrokesmod package, only these classes were
+    // renamed.
+    private static final Pattern RAVEN_MAIN_CLASS = Pattern.compile("(?<![\\w.$])keystrokesmod\\.Raven\\b");
+    private static final Pattern RAVEN_FONT_RENDERER =
+            Pattern.compile("(?<![\\w.$])keystrokesmod\\.utility\\.font\\.RavenFontRenderer\\b");
+
+    /**
+     * Lets Raven bS scripts that reach into client internals by fully qualified name
+     * ({@code keystrokesmod.Raven.scriptManager}, {@code keystrokesmod.utility.font.RavenFontRenderer}) compile against
+     * Feral, where those classes are called {@code Feral} and {@code FeralFontRenderer}.
+     */
+    static String remapRavenClasses(String source) {
+        if (source == null || !source.contains("keystrokesmod.")) {
+            return source;
+        }
+        String out = RAVEN_MAIN_CLASS.matcher(source).replaceAll("keystrokesmod.Feral");
+        return RAVEN_FONT_RENDERER.matcher(out).replaceAll("keystrokesmod.utility.font.FeralFontRenderer");
+    }
 
     static String supportNestedTypes(String source) {
         if (source != null && !source.isEmpty()) {
