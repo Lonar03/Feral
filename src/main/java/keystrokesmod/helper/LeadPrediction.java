@@ -15,8 +15,6 @@ import net.minecraft.network.packet.s2c.play.EntityVelocityS2CPacket;
 import net.minecraft.network.packet.s2c.play.RemoveEntitiesS2CPacket;
 import net.minecraft.world.World;
 
-// Ported from Meower's AutoAim (Jade's packet-based movement prediction): only the parts Zombies Aimbot's
-// PlayerLeadTracker needs, so the Aimbot doesn't need the whole AutoAim module.
 public final class LeadPrediction {
     private LeadPrediction() {}
 

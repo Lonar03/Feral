@@ -16,9 +16,6 @@ import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 
 /**
- * Player movement prediction for hitscan aiming, built on AutoAim's (Jade's) packet-based motion
- * predictor. It predicts from the positions the server sent (not the smoothed client position, which
- * trails 1-3 ticks behind), with strafe/jump/collision handling. The owner forwards received
  * packets to {@link #onPacket} and calls {@link #tick} once per client tick; tracking mirrors
  * AutoAim's updatePlayerTracking.
  */
