@@ -19,7 +19,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(Block.class)
 public abstract class MixinBlock {
-    // Ignore Block: the crosshair goes through every block it ignores (Meower: isCollidable).
+    // Ignore Block: the crosshair goes through every block it ignores (ZombieCat: isCollidable).
     @Inject(method = "canRayTrace()Z", at = @At("HEAD"), cancellable = true)
     private void feral$ignoreBlockRayTrace(CallbackInfoReturnable<Boolean> cir) {
         if (ModuleManager.ignoreBlock != null && ModuleManager.ignoreBlock.shouldIgnore((Block) (Object) this)) {

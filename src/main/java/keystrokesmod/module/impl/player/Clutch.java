@@ -112,7 +112,7 @@ public class Clutch extends Module {
         this.autoClutchLandedGuard = false;
     }
 
-    // Lower-flag rotation handling, same as MeowerClient (commit df597f8): runs last, sends GCD-fixed rotations as
+    // Lower-flag rotation handling. runs last, sends GCD-fixed rotations as
     // exact
     // rotations, drops stale queued placements and re-raycasts with the server rotation before placing.
     @ForgeEvents.SubscribeEvent(priority = ForgeEvents.EventPriority.LOWEST)

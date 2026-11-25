@@ -76,7 +76,7 @@ public class MobESP extends Module {
     public ButtonSetting redOnDamage;
     public ButtonSetting showInvis;
     private final SliderSetting maxDistance;
-    /** Colors Hypixel Zombies bosses, powerup mobs and bad-headshot mobs (from ZombieCat, via MeowerClient). */
+    /** Colors Hypixel Zombies bosses, powerup mobs and bad-headshot mobs (from ZombieCat). */
     public ButtonSetting zombiesColors;
     /** With Zombies colors: plain mobs are white. Off: plain mobs keep their configured color. */
     public ButtonSetting whiteNormalMobs;

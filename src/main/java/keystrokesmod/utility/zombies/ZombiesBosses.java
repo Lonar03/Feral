@@ -1,4 +1,4 @@
-// Boss tags ported from Adjust (openadjust, github.com/yxzeroo/openadjust), modified for Meower and Feral
+// Boss tags ported from Adjust (openadjust, github.com/yxzeroo/openadjust), modified for Feral
 // Source: hypixel/game/zombies/round/ZombiesRoundData.java (tag(...) calls). Adjust's table holds at most one boss per
 // wave and is incomplete, so extra entries can be added in keystrokes/zombiesbosses.json.
 package keystrokesmod.utility.zombies;

@@ -1,5 +1,5 @@
 // Layout, key types, custom keys and config format based on Sk1er LLC's Keystrokes mod (club.sk1er.mods.keystrokes,
-// by Fyu, boomboompower and Sk1er), rewritten for Meower, ported to Feral. Module input tracking is Meower's own.
+// by Fyu, boomboompower and Sk1er), rewritten for Feral. Module input tracking is Feral's own.
 package keystrokesmod.module.impl.client;
 
 import com.google.gson.JsonArray;

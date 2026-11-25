@@ -461,7 +461,7 @@ public abstract class MixinEntityPlayerSP extends ClientPlayerEntity {
         }
     }
 
-    // Keep Inventory (ported from MeowerClient): closing a preserved container keeps it open server-side.
+    // Keep Inventory (ported from ZombieCat): closing a preserved container keeps it open server-side.
     @Inject(method = "closeMenu", at = @At("HEAD"), cancellable = true)
     private void feral$keepInventoryOpen(CallbackInfo ci) {
         LocalClientPlayerEntity self = (LocalClientPlayerEntity) (Object) this;

@@ -717,7 +717,7 @@ public class RenderUtils implements IMinecraftInstance {
         renderEntity(e, type, expand, shift, color, damage, fillAlpha, 2.0F);
     }
 
-    /** @param lineWidth box outline width (MobESP's Box thickness, ported from MeowerClient). */
+    /** @param lineWidth box outline width (MobESP's Box thickness). */
     public static void renderEntity(
             Entity e,
             int type,

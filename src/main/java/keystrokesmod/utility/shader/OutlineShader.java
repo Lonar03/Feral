@@ -4,7 +4,7 @@ import net.minecraft.client.Minecraft;
 import org.lwjgl.opengl.GL20;
 
 public class OutlineShader extends OutlineESPShader {
-    /** Outline width in pixels (MobESP's Outline thickness, ported from MeowerClient). */
+    /** Outline width in pixels (MobESP's Outline thickness). */
     private float kernel = 2.0F;
 
     public void setKernel(float kernel) {

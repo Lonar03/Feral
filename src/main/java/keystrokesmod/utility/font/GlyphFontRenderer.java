@@ -54,7 +54,7 @@ public final class GlyphFontRenderer implements FeralFontRenderer {
 
     /**
      * @param thickness extra letter weight in GUI pixels; each glyph gets an outline of this width traced around it
-     *     before it is uploaded, so 0 renders the font as-is (same as MeowerClient).
+     *     before it is uploaded, so 0 renders the font as-is.
      */
     public GlyphFontRenderer(Font sourceFont, boolean antiAlias, float thickness) {
         float renderScale = resolveRenderScale();

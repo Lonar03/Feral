@@ -56,7 +56,7 @@ public class FastPlace extends Module {
         this.registerSetting(this.tickDelay = new SliderSetting("Delay", " tick", 1.0, 0.0, 3.0, 1.0));
         this.registerSetting(this.activationTime = new SliderSetting("Minimum hold time", "ms", 0.0, 0.0, 100.0, 5.0));
         this.registerSetting(this.blocksOnly = new ButtonSetting("Blocks only", true));
-        // Zombies guns and perk items (ported from MeowerClient)
+        // Zombies guns and perk items
         this.registerSetting(this.gunException = new ButtonSetting("Gun exception", false));
         this.registerSetting(this.perkException = new ButtonSetting("Perk exception", false));
         this.perkItems = new ItemListSetting("Perk items");

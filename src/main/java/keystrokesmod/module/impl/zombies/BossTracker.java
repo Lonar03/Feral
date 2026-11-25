@@ -306,7 +306,6 @@ public class BossTracker extends Module {
 
     @SubscribeEvent
     public void onRenderOverlay(RenderTickEvent event) {
-        // Feral draws HUD text at the end of the render tick (like the HUD module); Meower used Forge's overlay event
         if (event.phase != Phase.END || !Utils.nullCheck()) {
             return;
         }

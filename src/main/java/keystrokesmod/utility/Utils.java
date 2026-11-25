@@ -2152,7 +2152,7 @@ public class Utils implements IMinecraftInstance {
         }
     }
 
-    /** Mode names for a {@link SliderSetting} made from an enum (same as MeowerClient). */
+    /** Mode names for a {@link SliderSetting} made from an enum. */
     public static <E extends Enum<E>> String[] enumNames(Class<E> enumClass) {
         E[] constants = enumClass.getEnumConstants();
         String[] names = new String[constants.length];

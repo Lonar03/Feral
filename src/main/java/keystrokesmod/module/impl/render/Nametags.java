@@ -147,7 +147,7 @@ public class Nametags extends Module {
             float baseScale = this.computeBaseScaleValue();
             this.renderStateCount = 0;
 
-            // Show mobs (ported from MeowerClient): every living entity instead of only players
+            // Show mobs: every living entity instead of only players
             List<? extends Entity> candidates = this.showMobs.isToggled() ? mc.world.entities : mc.world.players;
             for (Entity candidate : candidates) {
                 if (candidate instanceof LivingEntity && this.shouldRenderNametag((LivingEntity) candidate)) {

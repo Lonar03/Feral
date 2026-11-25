@@ -14,8 +14,8 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.living.ArmorStandEntity;
 
 /**
- * Makes hologram text (armor stand names: NPC and lobby text) render bright and through walls. Ported from
- * MeowerClient; Feral draws the labels in the world-render-last pass (like Nametags) instead of inside the entity
+ * Makes hologram text (armor stand names: NPC and lobby text) render bright and through walls.
+ * Feral draws the labels in the world-render-last pass (like Nametags) instead of inside the entity
  * renderer, because the OneClient pack's renderer (Argentum) batches entity rendering.
  */
 public class HoloVis extends Module {
