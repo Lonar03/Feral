@@ -9,6 +9,7 @@ import java.util.List;
 import keystrokesmod.module.Module;
 import keystrokesmod.module.ModuleManager;
 import keystrokesmod.module.impl.client.Gui;
+import keystrokesmod.module.impl.render.HUD;
 import keystrokesmod.script.ScriptDefaults;
 import keystrokesmod.script.model.ItemStack;
 import org.lwjgl.input.Keyboard;
@@ -65,12 +66,7 @@ public final class BigCatGui extends ScriptDefaults {
     private static final String S_NOTIF_STYLE = "Notification style";
     private static final String S_NOTIF_POS = "Notification corner";
     private static final String S_NOTIF_SCALE = "Notification scale";
-    private static final String S_ARRAY = "Show arraylist";
-    private static final String S_ARRAY_POS = "Arraylist corner";
-    private static final String S_ARRAY_SCALE = "Arraylist scale";
-    private static final String S_ARRAY_INFO = "Show module info";
     private static final String S_NOTIF_OPACITY = "Notification opacity";
-    private static final String S_ARRAY_OPACITY = "Arraylist opacity";
 
     private static final int NOTIF_MAX = 6;
     private static final long NOTIF_LIFE = 1200L;
@@ -441,10 +437,11 @@ public final class BigCatGui extends ScriptDefaults {
         // notifications use the hardcoded defaults until the menu is opened once after launch.
         applySettings();
         detectToggles();
-        if (modules.getButton(scriptName, S_NOTIFS) && !open) {
+        if (Gui.isBigCatStyle() && modules.getButton(scriptName, S_NOTIFS) && !open) {
             drawNotifications();
         }
-        arrayListAnim = approach(arrayListAnim, modules.getButton(scriptName, S_ARRAY) ? 1f : 0f, 3f, frameDt);
+        // The arraylist belongs to the HUD module (Arraylist: Big cat), whatever the Gui style is.
+        arrayListAnim = approach(arrayListAnim, HUD.isCatArraylistSelected() ? 1f : 0f, 3f, frameDt);
         if (arrayListAnim > 0.005f) {
             drawArraylist();
         }
@@ -555,8 +552,8 @@ public final class BigCatGui extends ScriptDefaults {
     }
 
     private void drawArraylist() {
-        boolean info = modules.getButton(scriptName, S_ARRAY_INFO);
-        int corner = (int) Math.round(modules.getSlider(scriptName, S_ARRAY_POS));
+        boolean info = HUD.showInfo.isToggled();
+        int corner = (int) Math.round(HUD.catCorner.getInput());
         // Changing the corner replays the same slide-in the toggle uses, from the new edge.
         if (corner != lastArrayCorner) {
             lastArrayCorner = corner;
@@ -584,8 +581,8 @@ public final class BigCatGui extends ScriptDefaults {
             return;
         }
 
-        float as = (float) modules.getSlider(scriptName, S_ARRAY_SCALE) * 0.8f;
-        float aop = clampF((float) modules.getSlider(scriptName, S_ARRAY_OPACITY) / 100f, 0f, 1f);
+        float as = (float) HUD.catScale.getInput() * 0.8f;
+        float aop = clampF((float) HUD.catOpacity.getInput() / 100f, 0f, 1f);
         float rowH = 15f * as;
         float padX = 6f * as;
         float margin = 6f * as;

@@ -94,15 +94,7 @@ public class Gui extends Module {
                 new SliderSetting(notifications, "Notification scale", "x", 1.0, 0.6, 2.0, 0.05), bigCatSettings);
         this.registerSetting(
                 new SliderSetting(notifications, "Notification opacity", "%", 100.0, 40.0, 100.0, 1.0), bigCatSettings);
-
-        GroupSetting arraylist = new GroupSetting("Arraylist");
-        this.registerSetting(arraylist, bigCatSettings);
-        this.registerSetting(new ButtonSetting(arraylist, "Show arraylist", true), bigCatSettings);
-        this.registerSetting(new SliderSetting(arraylist, "Arraylist corner", "", 1, CORNERS), bigCatSettings);
-        this.registerSetting(new SliderSetting(arraylist, "Arraylist scale", "x", 1.0, 0.6, 2.0, 0.05), bigCatSettings);
-        this.registerSetting(
-                new SliderSetting(arraylist, "Arraylist opacity", "%", 100.0, 0.0, 100.0, 1.0), bigCatSettings);
-        this.registerSetting(new ButtonSetting(arraylist, "Show module info", true), bigCatSettings);
+        // The Big cat arraylist settings are in HUD (Arraylist: Big cat).
     }
 
     private void registerSetting(Setting setting, List<Setting> styleList) {

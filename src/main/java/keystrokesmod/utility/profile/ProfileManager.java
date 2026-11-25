@@ -502,6 +502,8 @@ public class ProfileManager implements IMinecraftInstance {
             }
         }
 
+        RavenProfileCompat.moveGuiArraylist(loadedModuleData);
+
         if (!loadedRelationshipsState && ModuleManager.relationships != null && Feral.playerRelationsManager != null) {
             ProfileManager.RequestedModuleState relationshipsState =
                     requestedModuleStates.get(ModuleManager.relationships);

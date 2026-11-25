@@ -2,6 +2,7 @@ package keystrokesmod.clickgui;
 
 import keystrokesmod.event.KeyPressEvent;
 import keystrokesmod.module.impl.client.Gui;
+import keystrokesmod.module.impl.render.HUD;
 import keystrokesmod.platform.ornithe.ForgeEvents.EventPriority;
 import keystrokesmod.platform.ornithe.ForgeEvents.MouseEvent;
 import keystrokesmod.platform.ornithe.ForgeEvents.SubscribeEvent;
@@ -29,7 +30,9 @@ public class BigCatEvents {
                 // The style was switched from inside the window: close it. The next open uses the new style.
                 this.gui.onDisable();
             }
-            return;
+            if (!HUD.isCatArraylistSelected()) {
+                return;
+            }
         }
 
         mc.gameRenderer.setupGuiState();
