@@ -115,6 +115,7 @@ public class BedWars extends Module {
     private final ButtonSetting removeGameId;
     private final ButtonSetting targetUnicorn;
     private final ButtonSetting renderTimeWarp;
+    private final ButtonSetting armorReminder;
     private ButtonSetting bow;
     private ButtonSetting diamondArmor;
     private ButtonSetting dreamDefender;
@@ -139,6 +140,7 @@ public class BedWars extends Module {
     private boolean ownBedDestroyed;
     private boolean pendingSpawnAnchorCapture;
     private boolean waitingForRespawn;
+    private int armorCheckTicks = -1;
     private long respawnMessageTime;
     private long magicMilkExpiresAt;
     private final Map<Vec3d, Long> timeWarpPositions = new LinkedHashMap<>();
@@ -170,6 +172,8 @@ public class BedWars extends Module {
         this.registerSetting(this.removeGameId = new ButtonSetting("Remove game id", false));
         this.registerSetting(this.targetUnicorn = new ButtonSetting("Target unicorn", false));
         this.registerSetting(this.whitelistOwnBed = new ButtonSetting("Whitelist own bed", true));
+        this.registerSetting(new DescriptionSetting("Reminders"));
+        this.registerSetting(this.armorReminder = new ButtonSetting("Armor reminder", true));
         this.registerSetting(new DescriptionSetting("Game alerts"));
         this.registerSetting(this.alertInterval = new SliderSetting("Alert interval", " second", 5.0, 0.0, 30.0, 1.0));
         this.registerSetting(this.bow = new ButtonSetting("Bow", true));
@@ -244,6 +248,7 @@ public class BedWars extends Module {
         this.resetTimeWarpTracking();
         this.resetDragonHud();
         this.resetClosestEnemyHud();
+        this.armorCheckTicks = -1;
     }
 
     @Override
@@ -906,6 +911,7 @@ public class BedWars extends Module {
             this.resetTimeWarpTracking();
             this.resetDragonHud();
             this.resetClosestEnemyHud();
+            this.armorCheckTicks = -1;
         } else if (e.entity instanceof IronGolemEntity) {
             if (Utils.getBedwarsStatus() != 2) {
                 return;
@@ -937,6 +943,7 @@ public class BedWars extends Module {
                 this.pendingSpawnAnchorCapture = false;
             }
 
+            this.updateArmorReminder();
             if (Utils.getBedwarsStatus() == 2
                     && (this.bow.isToggled()
                             || this.diamondArmor.isToggled()
@@ -989,6 +996,23 @@ public class BedWars extends Module {
         }
     }
 
+    private void updateArmorReminder() {
+        if (this.armorCheckTicks < 0 || this.armorCheckTicks-- > 0) {
+            return;
+        }
+
+        if (this.armorReminder.isToggled() && Utils.getBedwarsStatus() == 2 && !this.hasIronArmorOrBetter()) {
+            Utils.sendMessage("&ebuy armor?");
+        }
+    }
+
+    // Bed Wars armor upgrades swap the leggings and boots; the helmet and chestplate stay leather.
+    private boolean hasIronArmorOrBetter() {
+        ItemStack leggings = mc.player.inventory.armor[1];
+        return leggings != null
+                && (leggings.getItem() == Items.IRON_LEGGINGS || leggings.getItem() == Items.DIAMOND_LEGGINGS);
+    }
+
     @ForgeEvents.SubscribeEvent
     public void onChat(ForgeEvents.ClientChatReceivedEvent event) {
         if (Utils.nullCheck()) {
@@ -1009,6 +1033,13 @@ public class BedWars extends Module {
                 this.waitingForRespawn = true;
                 this.respawnMessageTime = System.currentTimeMillis();
             } else if (strippedMessage.equals("You have respawned!")
+                    && Utils.getBedwarsStatus() == 2
+                    && this.armorReminder.isToggled()) {
+                // Give the server a moment to put the permanent armor back on before checking.
+                this.armorCheckTicks = 10;
+            }
+
+            if (strippedMessage.equals("You have respawned!")
                     && this.waitingForRespawn
                     && Utils.timeBetween(System.currentTimeMillis(), this.respawnMessageTime) <= 12000L) {
                 this.pendingSpawnAnchorCapture = true;
