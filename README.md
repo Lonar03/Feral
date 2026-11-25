@@ -1,6 +1,8 @@
 # Feral
 A minecraft mod designed for Hypixel minigames. fabric/oneclient support. not forge
 
+test
+
 ## Installation
 
 - Install [Ornithe](https://ornithemc.net) (Fabric Loader for old versions) for Minecraft 1.8.9.
