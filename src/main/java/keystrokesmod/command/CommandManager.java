@@ -68,6 +68,14 @@ public class CommandManager {
         this.register(new Profiles());
         this.register(new ShowAll());
         this.register(new HideAll());
+        // Zombies Aimbot: .crits, .predict, .ypredict
+        for (Command command : keystrokesmod.module.impl.zombies.Aimbot.createCommands()) {
+            this.register(command);
+        }
+        // Five Player Lobby (Quintet): .quintet arm|kick|disarm
+        for (Command command : keystrokesmod.module.impl.zombies.FivePlayerLobby.createCommands()) {
+            this.register(command);
+        }
     }
 
     public boolean handleChatMessage(String message) {

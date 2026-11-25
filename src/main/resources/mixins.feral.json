@@ -4,8 +4,10 @@
     "compatibilityLevel": "JAVA_8",
     "mixins": [
         "entity.MixinEntity",
+        "entity.MixinPlayerSleeping",
         "world.MixinBlockBarrier",
         "render.MixinBarrierParticle",
+        "render.MixinGuiIngame",
         "render.MixinBlockStateMapper",
         "render.MixinFontRenderer",
         "entity.MixinEntityPlayerSP",

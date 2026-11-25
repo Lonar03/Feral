@@ -2151,4 +2151,50 @@ public class Utils implements IMinecraftInstance {
             return null;
         }
     }
+
+    /** Mode names for a {@link SliderSetting} made from an enum (same as MeowerClient). */
+    public static <E extends Enum<E>> String[] enumNames(Class<E> enumClass) {
+        E[] constants = enumClass.getEnumConstants();
+        String[] names = new String[constants.length];
+        for (int i = 0; i < constants.length; i++) {
+            names[i] = constants[i].name();
+        }
+        return names;
+    }
+
+    /** The enum constant currently selected in a mode {@link SliderSetting} built with {@link #enumNames}. */
+    public static <E extends Enum<E>> E enumOption(Class<E> enumClass, SliderSetting setting) {
+        E[] constants = enumClass.getEnumConstants();
+        int index = (int) Math.max(0, Math.min(constants.length - 1, Math.round(setting.getInput())));
+        return constants[index];
+    }
+
+    /** Opens a folder in the system file manager (creates it first). */
+    public static boolean openFolder(java.io.File folder) {
+        folder.mkdirs();
+        String path = folder.getAbsolutePath();
+        String os = System.getProperty("os.name", "").toLowerCase();
+        try {
+            if (os.contains("mac")) {
+                Runtime.getRuntime().exec(new String[] {"/usr/bin/open", path});
+                return true;
+            } else if (os.contains("win")) {
+                Runtime.getRuntime().exec(new String[] {"cmd.exe", "/C", "start", "\"Open folder\"", path});
+                return true;
+            } else if (os.contains("nux") || os.contains("nix")) {
+                Runtime.getRuntime().exec(new String[] {"xdg-open", path});
+                return true;
+            }
+        } catch (Exception ignored) {
+        }
+
+        try {
+            if (java.awt.Desktop.isDesktopSupported()) {
+                java.awt.Desktop.getDesktop().open(folder);
+                return true;
+            }
+        } catch (Exception ignored) {
+        }
+        return false;
+    }
 }

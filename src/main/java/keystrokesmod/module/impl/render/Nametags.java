@@ -26,6 +26,10 @@ import net.minecraft.client.render.vertex.DefaultVertexFormat;
 import net.minecraft.client.render.vertex.Tesselator;
 import net.minecraft.enchantment.EnchantmentHelper;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.living.ArmorStandEntity;
+import net.minecraft.entity.living.LivingEntity;
+import net.minecraft.entity.living.mob.monster.boss.WitherEntity;
+import net.minecraft.entity.living.mob.passive.VillagerEntity;
 import net.minecraft.entity.living.player.PlayerEntity;
 import net.minecraft.item.ArmorItem;
 import net.minecraft.item.BowItem;
@@ -58,6 +62,7 @@ public class Nametags extends Module {
     private ButtonSetting showStackSize;
     private ButtonSetting showDurability;
     private ButtonSetting renderSelf;
+    private ButtonSetting showMobs;
     private ButtonSetting hideVanilla;
     private ColorSetting friendColor;
     private ColorSetting enemyColor;
@@ -85,6 +90,7 @@ public class Nametags extends Module {
         this.registerSetting(this.autoScale = new ButtonSetting("Auto-scale", false));
         this.registerSetting(this.onlyRenderName = new ButtonSetting("Only render name", false));
         this.registerSetting(this.renderSelf = new ButtonSetting("Render self", false));
+        this.registerSetting(this.showMobs = new ButtonSetting("Show mobs", false));
         this.registerSetting(this.bgBorder = new ButtonSetting("Background border", false));
         this.registerSetting(this.showHealth = new ButtonSetting("Show health", false));
         this.registerSetting(this.textShadow = new ButtonSetting("Text shadow", false));
@@ -121,8 +127,8 @@ public class Nametags extends Module {
     @ForgeEvents.SubscribeEvent
     public void onRenderLiving(ForgeEvents.RenderLivingEvent.Specials.Pre event) {
         if (this.hideVanilla.isToggled()) {
-            if (event.entity instanceof PlayerEntity) {
-                PlayerEntity player = (PlayerEntity) event.entity;
+            if (event.entity instanceof LivingEntity) {
+                LivingEntity player = (LivingEntity) event.entity;
                 if (this.shouldRenderNametag(player)) {
                     event.setCanceled(true);
                 }
@@ -141,8 +147,11 @@ public class Nametags extends Module {
             float baseScale = this.computeBaseScaleValue();
             this.renderStateCount = 0;
 
-            for (PlayerEntity player : mc.world.players) {
-                if (this.shouldRenderNametag(player)) {
+            // Show mobs (ported from MeowerClient): every living entity instead of only players
+            List<? extends Entity> candidates = this.showMobs.isToggled() ? mc.world.entities : mc.world.players;
+            for (Entity candidate : candidates) {
+                if (candidate instanceof LivingEntity && this.shouldRenderNametag((LivingEntity) candidate)) {
+                    LivingEntity player = (LivingEntity) candidate;
                     double dx = player.x - viewer.x;
                     double dy = player.y - viewer.y;
                     double dz = player.z - viewer.z;
@@ -246,7 +255,7 @@ public class Nametags extends Module {
         }
     }
 
-    private boolean shouldRenderNametag(PlayerEntity player) {
+    private boolean shouldRenderNametag(LivingEntity player) {
         if (player == null) {
             return false;
         }
@@ -254,15 +263,27 @@ public class Nametags extends Module {
         if (player != mc.player) {
             if (player.removed || player.deathTicks > 0) {
                 return false;
+            } else if (!this.showInvis.isToggled() && player.isInvisible()) {
+                return false;
+            } else if (player instanceof PlayerEntity) {
+                return !AntiBot.isBot(player);
             } else {
-                return !this.showInvis.isToggled() && player.isInvisible() ? false : !AntiBot.isBot(player);
+                return this.showMobs.isToggled() && !(player instanceof ArmorStandEntity) && !isFakeMob(player);
             }
         } else {
             return this.renderSelf.isToggled() && mc.options.perspective != 0;
         }
     }
 
-    private String buildDisplayName(PlayerEntity entity, boolean showDist, float distance) {
+    /**
+     * Hypixel uses invisible villagers as Zombies window hitboxes and invisible withers to draw boss bars, so they
+     * aren't real mobs even with "Show invis" on.
+     */
+    private static boolean isFakeMob(LivingEntity entity) {
+        return entity.isInvisible() && (entity instanceof VillagerEntity || entity instanceof WitherEntity);
+    }
+
+    private String buildDisplayName(LivingEntity entity, boolean showDist, float distance) {
         String name;
         if (this.onlyRenderName.isToggled()) {
             String formatted = Utils.getFirstColorCode(entity.getDisplayName().getFormattedString());
@@ -285,11 +306,13 @@ public class Nametags extends Module {
         return name;
     }
 
-    private int resolveRelationshipColor(PlayerEntity entity) {
-        if (Utils.isFriended(entity)) {
+    private int resolveRelationshipColor(LivingEntity entity) {
+        if (!(entity instanceof PlayerEntity)) {
+            return -1;
+        } else if (Utils.isFriended((PlayerEntity) entity)) {
             return this.friendColor.getColor();
         } else {
-            return Utils.isEnemy(entity) ? this.enemyColor.getColor() : -1;
+            return Utils.isEnemy((PlayerEntity) entity) ? this.enemyColor.getColor() : -1;
         }
     }
 
@@ -332,7 +355,7 @@ public class Nametags extends Module {
             FeralFontRenderer textRenderer,
             TextRenderer itemFontRenderer,
             boolean frontView) {
-        PlayerEntity entity = state.player;
+        LivingEntity entity = state.player;
         if (entity != null && !entity.removed && entity.deathTicks <= 0) {
             double x = entity.prevX + (entity.x - entity.prevX) * partialTicks - renderManager.cameraX;
             double y = entity.prevY + (entity.y - entity.prevY) * partialTicks - renderManager.cameraY;
@@ -580,7 +603,7 @@ public class Nametags extends Module {
         return FontManager.getNametagRenderer(this.getSelectedFontName());
     }
 
-    private String appendHealth(String name, PlayerEntity entity) {
+    private String appendHealth(String name, LivingEntity entity) {
         float health = Math.max(0.0F, entity.getHealth());
         float maxHealth = entity.getMaxHealth();
         if (maxHealth <= 0.0F) {
@@ -711,7 +734,7 @@ public class Nametags extends Module {
     }
 
     private static class NametagRenderState {
-        private PlayerEntity player;
+        private LivingEntity player;
         private String displayName;
         private int stringHalfWidth;
         private int teamColor;
@@ -729,7 +752,7 @@ public class Nametags extends Module {
         private NametagRenderState() {}
 
         private void set(
-                PlayerEntity player,
+                LivingEntity player,
                 String displayName,
                 int stringHalfWidth,
                 int teamColor,

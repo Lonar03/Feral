@@ -10,4 +10,8 @@ import org.spongepowered.asm.mixin.gen.Accessor;
 public interface IAccessorEntityPlayer {
     @Accessor("itemUseTimer")
     void setItemInUseCount(int var1);
+
+    /** The raw sleeping flag (isSleeping() can be hooked, e.g. by Easy Revive). */
+    @Accessor("sleeping")
+    boolean isSleepingRaw();
 }

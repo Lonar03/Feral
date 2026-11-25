@@ -76,6 +76,14 @@ public class MobESP extends Module {
     public ButtonSetting redOnDamage;
     public ButtonSetting showInvis;
     private final SliderSetting maxDistance;
+    /** Colors Hypixel Zombies bosses, powerup mobs and bad-headshot mobs (from ZombieCat, via MeowerClient). */
+    public ButtonSetting zombiesColors;
+    /** With Zombies colors: plain mobs are white. Off: plain mobs keep their configured color. */
+    public ButtonSetting whiteNormalMobs;
+
+    private SliderSetting boxThickness;
+    private SliderSetting outlineThickness;
+
     private final List<MobESP.MobEntry> mobEntries = new ArrayList<>();
     private final Map<LivingEntity, Integer> renderAsTwoD = new HashMap<>();
     private RenderTarget outlineFramebuffer;
@@ -94,8 +102,19 @@ public class MobESP extends Module {
         this.registerSetting(this.healthBar = new ButtonSetting(this.espTypes, "Health bar", false));
         this.registerSetting(this.redOnDamage = new ButtonSetting("Red on damage", true));
         this.registerSetting(this.showInvis = new ButtonSetting("Show invis", true));
+        this.registerSetting(this.zombiesColors = new ButtonSetting("Zombies colors", false));
+        this.registerSetting(this.whiteNormalMobs = new ButtonSetting("White for normal mobs", true));
+        this.registerSetting(this.boxThickness = new SliderSetting("Box thickness", 2.0, 0.5, 6.0, 0.5));
+        this.registerSetting(this.outlineThickness = new SliderSetting("Outline thickness", 2.0, 1.0, 5.0, 1.0));
         this.registerSetting(this.maxDistance = new SliderSetting("Max distance", 128.0, 32.0, 256.0, 8.0));
         this.registerMobGroups();
+    }
+
+    @Override
+    public void guiUpdate() {
+        this.whiteNormalMobs.setVisible(this.zombiesColors.isToggled(), this);
+        this.boxThickness.setVisible(this.box.isToggled(), this);
+        this.outlineThickness.setVisible(this.outline.isToggled(), this);
     }
 
     private void registerMobGroups() {
@@ -120,14 +139,14 @@ public class MobESP extends Module {
                 "Elder Guardian", GuardianEntity.class, e -> ((GuardianEntity) e).isElder(), false, 0, 90, 140);
         this.registerMob("Ender Dragon", EnderDragonEntity.class, false, 200, 0, 200);
         this.registerMob("Enderman", EndermanEntity.class, true, 0, 0, 0);
-        this.registerMob("Endermite", EndermiteEntity.class, false, 80, 0, 120);
+        this.registerMob("Endermite", EndermiteEntity.class, true, 80, 0, 120);
         this.registerMob("Ghast", GhastEntity.class, true, 255, 255, 255);
-        this.registerMob("Giant", GiantEntity.class, false, 0, 0, 139);
+        this.registerMob("Giant", GiantEntity.class, true, 0, 0, 139);
         this.registerMob("Guardian", GuardianEntity.class, g -> !((GuardianEntity) g).isElder(), false, 0, 150, 180);
         this.registerMob(
                 "Horse", HorseBaseEntity.class, e -> ((HorseBaseEntity) e).getType() == 0, false, 150, 100, 60);
-        this.registerMob("Iron Golem", IronGolemEntity.class, false, 200, 200, 200);
-        this.registerMob("Magma Cube", MagmaCubeEntity.class, false, 200, 60, 0);
+        this.registerMob("Iron Golem", IronGolemEntity.class, true, 200, 200, 200);
+        this.registerMob("Magma Cube", MagmaCubeEntity.class, true, 200, 60, 0);
         this.registerMob("Mooshroom", MooshroomEntity.class, false, 200, 0, 0);
         this.registerMob("Mule", HorseBaseEntity.class, e -> ((HorseBaseEntity) e).getType() == 2, false, 130, 110, 80);
         this.registerMob("Ocelot", OcelotEntity.class, false, 200, 150, 100);
@@ -148,13 +167,14 @@ public class MobESP extends Module {
         this.registerMob("Slime", SlimeEntity.class, true, 0, 255, 0);
         this.registerMob("Snow Golem", SnowGolemEntity.class, false, 255, 255, 255);
         this.registerMob("Spider", SpiderEntity.class, true, 0, 0, 0);
-        this.registerMob("Squid", SquidEntity.class, false, 30, 60, 180);
+        this.registerMob("Squid", SquidEntity.class, true, 30, 60, 180);
         this.registerMob("Villager", VillagerEntity.class, false, 180, 150, 120);
-        this.registerMob("Witch", WitchEntity.class, false, 90, 50, 120);
-        this.registerMob("Wither", WitherEntity.class, false, 64, 64, 64);
+        this.registerMob("Witch", WitchEntity.class, true, 90, 50, 120);
+        // Invisible withers are the fake entity Hypixel draws boss bars with, not a mob (MeowerClient).
+        this.registerMob("Wither", WitherEntity.class, e -> !e.isInvisible(), true, 64, 64, 64);
         this.registerMob(
                 "Wither Skeleton", SkeletonEntity.class, e -> ((SkeletonEntity) e).getType() == 1, true, 55, 55, 55);
-        this.registerMob("Wolf", WolfEntity.class, false, 200, 200, 200);
+        this.registerMob("Wolf", WolfEntity.class, true, 200, 200, 200);
         this.registerMob(
                 "Zombie",
                 ZombieEntity.class,
@@ -211,6 +231,13 @@ public class MobESP extends Module {
 
     private int rgbFor(LivingEntity ent, MobESP.MobEntry entry) {
         int rgb = Utils.mergeAlpha(entry.color.getRGB(), 255);
+        if (this.zombiesColors.isToggled()) {
+            java.awt.Color zombiesColor =
+                    keystrokesmod.utility.zombies.ZombiesMobs.colorFor(ent, this.whiteNormalMobs.isToggled());
+            if (zombiesColor != null) {
+                rgb = zombiesColor.getRGB();
+            }
+        }
         if (this.redOnDamage.isToggled() && ent.damagedTimer != 0) {
             rgb = -65536;
         }
@@ -345,6 +372,7 @@ public class MobESP extends Module {
                     mc.gameRenderer.disableLightMap();
                     mc.gameRenderer.setupGuiState();
                     mc.getRenderTarget().bindWrite(false);
+                    this.outlineShader.setKernel((float) this.outlineThickness.getInput());
                     this.outlineShader.use();
                     RenderUtils.drawFramebufferFullscreen(this.outlineFramebuffer);
                     this.outlineShader.stop();
@@ -361,7 +389,8 @@ public class MobESP extends Module {
         if (this.box.isToggled() || this.shaded.isToggled() || this.healthBar.isToggled() || this.ring.isToggled()) {
             if (RenderUtils.isInViewFrustum(en)) {
                 if (this.box.isToggled()) {
-                    RenderUtils.renderEntity(en, 1, 0.0, 0.0, rgb, this.redOnDamage.isToggled());
+                    RenderUtils.renderEntity(en, 1, 0.0, 0.0, rgb, this.redOnDamage.isToggled(), 0.25F, (float)
+                            this.boxThickness.getInput());
                 }
 
                 if (this.shaded.isToggled()
@@ -378,6 +407,10 @@ public class MobESP extends Module {
                 if (this.ring.isToggled()) {
                     RenderUtils.renderEntity(en, 6, 0.0, 0.0, rgb, this.redOnDamage.isToggled());
                 }
+
+                // The box colour stayed set afterwards and tinted the hand (visible with Zombies colors' green)
+                // RenderUtils sets it with raw GL11 calls, so GlStateManager.color4f would be skipped by its cache
+                org.lwjgl.opengl.GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
             }
         }
     }

@@ -75,6 +75,7 @@ public class Feral {
         playerRelationsManager = new PlayerRelationsManager();
         playerRelationsManager.load();
         moduleManager.register();
+        keystrokesmod.helper.zombies.ZombiesGameHelper.init();
         ForgeEvents.MinecraftForge.EVENT_BUS.register(new BlockHighlightSharedHandler());
         scriptManager = new ScriptManager();
         keyStrokeRenderer = new KeyStrokeRenderer();

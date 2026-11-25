@@ -253,6 +253,7 @@ public class Module {
         render,
         minigames,
         other,
+        zombies,
         client,
         profiles,
         scripts;
