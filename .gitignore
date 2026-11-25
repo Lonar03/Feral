@@ -32,3 +32,6 @@ workspace/
 
 # macOS
 *.DS_Store
+
+# Reference material (decompiled mods, notes, spreadsheets): local only
+extras/
