@@ -14,6 +14,7 @@ import keystrokesmod.module.impl.client.Relationships;
 import keystrokesmod.module.impl.client.Settings;
 import keystrokesmod.module.impl.combat.AimAssist;
 import keystrokesmod.module.impl.combat.AntiKnockback;
+import keystrokesmod.module.impl.combat.AutoBlockAdjust;
 import keystrokesmod.module.impl.combat.AutoClicker;
 import keystrokesmod.module.impl.combat.Autoblock;
 import keystrokesmod.module.impl.combat.ClickAssist;
@@ -86,6 +87,7 @@ import keystrokesmod.module.impl.player.AutoLadder;
 import keystrokesmod.module.impl.player.AutoSwap;
 import keystrokesmod.module.impl.player.AutoTool;
 import keystrokesmod.module.impl.player.BedAura;
+import keystrokesmod.module.impl.player.BedDefense;
 import keystrokesmod.module.impl.player.BridgeAssist;
 import keystrokesmod.module.impl.player.Clutch;
 import keystrokesmod.module.impl.player.DelayRemover;
@@ -93,6 +95,7 @@ import keystrokesmod.module.impl.player.FastMine;
 import keystrokesmod.module.impl.player.FastPlace;
 import keystrokesmod.module.impl.player.Freecam;
 import keystrokesmod.module.impl.player.GhostHand;
+import keystrokesmod.module.impl.player.HeadHitter;
 import keystrokesmod.module.impl.player.HideWindow;
 import keystrokesmod.module.impl.player.IgnoreBlock;
 import keystrokesmod.module.impl.player.InvManager;
@@ -101,6 +104,7 @@ import keystrokesmod.module.impl.player.NoFall;
 import keystrokesmod.module.impl.player.NoRotate;
 import keystrokesmod.module.impl.player.SafeWalk;
 import keystrokesmod.module.impl.player.Scaffold;
+import keystrokesmod.module.impl.player.ScaffoldAdjust;
 import keystrokesmod.module.impl.player.Tower;
 import keystrokesmod.module.impl.player.WaterBucket;
 import keystrokesmod.module.impl.render.AntiDebuff;
@@ -166,6 +170,7 @@ public class ModuleManager {
     public static SkyWars skyWars;
     public static AntiFireball antiFireball;
     public static BedAura bedAura;
+    public static ScaffoldAdjust scaffoldAdjust;
     public static FastMine fastMine;
     public static Unscramble unscramble;
     public static BarrierVis barrierVis;
@@ -254,6 +259,7 @@ public class ModuleManager {
         this.addModule(antiKnockback = new AntiKnockback());
         this.addModule(autoClicker = new AutoClicker());
         this.addModule(new Autoblock());
+        this.addModule(new AutoBlockAdjust());
         this.addModule(autoBlockin = new AutoBlockin());
         this.addModule(new ClickAssist());
         this.addModule(displace = new Displace());
@@ -360,6 +366,9 @@ public class ModuleManager {
         this.addModule(mobESP = new MobESP());
         this.addModule(new Tower());
         this.addModule(new Scaffold());
+        this.addModule(scaffoldAdjust = new ScaffoldAdjust());
+        this.addModule(new HeadHitter());
+        this.addModule(new BedDefense());
         this.addModule(new Nametags());
         this.addModule(noCameraClip = new NoCameraClip());
         this.addModule(noHurtCam = new NoHurtCam());
@@ -382,7 +391,7 @@ public class ModuleManager {
         this.addModule(keepInventory = new KeepInventory());
         this.addModule(ghostBlock = new GhostBlock());
         this.addModule(new keystrokesmod.module.impl.client.Keystrokes());
-        // Zombies (ported from Meower, which ported them from ZombieCat/YogurtAddon)
+        // Zombies (ported from ZombieCat/YogurtAddon. with some edits)
         this.addModule(aimbot = new Aimbot());
         this.addModule(autoWrath = new AutoWrath());
         this.addModule(bossTracker = new BossTracker());

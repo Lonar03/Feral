@@ -110,6 +110,12 @@ public class SafeWalk extends Module {
     }
 
     public static boolean canSafeWalk() {
+        if (ScaffoldAdjust.safeWalkRequest
+                && ModuleManager.scaffoldAdjust != null
+                && ModuleManager.scaffoldAdjust.isEnabled()) {
+            return true;
+        }
+
         if (Tower.towering && Tower.disableSafewalk.isToggled()) {
             return false;
         }
