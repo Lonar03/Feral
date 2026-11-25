@@ -17,6 +17,7 @@ import keystrokesmod.module.setting.impl.ButtonSetting;
 import keystrokesmod.module.setting.impl.ColorSetting;
 import keystrokesmod.module.setting.impl.DescriptionSetting;
 import keystrokesmod.module.setting.impl.SliderSetting;
+import keystrokesmod.platform.ClientPlatform;
 import keystrokesmod.platform.ornithe.ForgeEvents;
 import keystrokesmod.utility.RotationUtils;
 import keystrokesmod.utility.Utils;
@@ -407,9 +408,8 @@ public class Backtrack extends Module {
                     }
                 } catch (DifferentThreadException var10) {
                 } catch (Throwable exception) {
-                    Utils.sendMessage(
-                            "&cBacktrack could not process " + packet.getClass().getSimpleName() + ": "
-                                    + exception.getClass().getSimpleName());
+                    Utils.sendMessage("&cBacktrack could not process " + ClientPlatform.className(packet.getClass())
+                            + ": " + exception.getClass().getSimpleName());
                 } finally {
                     this.processing = null;
                 }

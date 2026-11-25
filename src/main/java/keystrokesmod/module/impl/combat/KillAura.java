@@ -11,6 +11,7 @@ import keystrokesmod.event.ClientRotationEvent;
 import keystrokesmod.event.DispatchPacketEvent;
 import keystrokesmod.event.PreAttackEvent;
 import keystrokesmod.event.PrePlayerInteractEvent;
+import keystrokesmod.helper.zombies.ZombiesGameHelper;
 import keystrokesmod.mixin.impl.accessor.IAccessorEntityRenderer;
 import keystrokesmod.mixin.impl.accessor.IAccessorMinecraft;
 import keystrokesmod.module.Module;
@@ -24,16 +25,23 @@ import keystrokesmod.platform.ornithe.ForgeEvents;
 import keystrokesmod.utility.ReflectionUtils;
 import keystrokesmod.utility.RotationUtils;
 import keystrokesmod.utility.Utils;
+import keystrokesmod.utility.zombies.ZombiesMobs;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.living.ArmorStandEntity;
 import net.minecraft.entity.living.LivingEntity;
+import net.minecraft.entity.living.mob.GolemEntity;
 import net.minecraft.entity.living.mob.IronGolemEntity;
 import net.minecraft.entity.living.mob.PathFinderMobEntity;
+import net.minecraft.entity.living.mob.monster.GhastEntity;
 import net.minecraft.entity.living.mob.monster.GiantEntity;
+import net.minecraft.entity.living.mob.monster.MonsterEntity;
 import net.minecraft.entity.living.mob.monster.SilverfishEntity;
+import net.minecraft.entity.living.mob.monster.SlimeEntity;
 import net.minecraft.entity.living.mob.monster.ZombiePigmanEntity;
+import net.minecraft.entity.living.mob.monster.boss.WitherEntity;
 import net.minecraft.entity.living.mob.passive.animal.HorseBaseEntity;
+import net.minecraft.entity.living.mob.passive.animal.tameable.WolfEntity;
 import net.minecraft.entity.living.player.PlayerEntity;
 import net.minecraft.network.packet.c2s.play.ArmSwingC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerInteractEntityC2SPacket;
@@ -518,6 +526,10 @@ public class KillAura extends Module {
                 if (((HorseBaseEntity) entity).deathTicks != 0) {
                     return null;
                 }
+            } else if (this.attackMobs.isToggled() && isZombiesTarget(entity)) {
+                if (((LivingEntity) entity).deathTicks != 0) {
+                    return null;
+                }
             } else {
                 if (!(entity instanceof PathFinderMobEntity) || !this.attackMobs.isToggled()) {
                     return null;
@@ -528,8 +540,9 @@ public class KillAura extends Module {
                     return null;
                 }
 
-                String canonicalName = entity.getClass().getCanonicalName();
-                if (canonicalName == null || !canonicalName.startsWith("net.minecraft.entity.monster.")) {
+                // Was a "net.minecraft.entity.monster." package check, which never matched the intermediary class
+                // names the game runs with. EntityMob + EntityGolem cover that package's PathFinderMobs.
+                if (!(entity instanceof MonsterEntity) && !(entity instanceof GolemEntity)) {
                     return null;
                 }
             }
@@ -555,6 +568,7 @@ public class KillAura extends Module {
         if (entity instanceof PathFinderMobEntity
                 && !targetableUnicorn
                 && this.attackMobs.isToggled()
+                && !isZombiesTarget(entity)
                 && !this.isHostile((PathFinderMobEntity) entity)) {
             return null;
         }
@@ -627,6 +641,28 @@ public class KillAura extends Module {
         }
 
         return leastRecentlyAttacked;
+    }
+
+    /**
+     * In a Zombies game every hostile mob is a target, like Zombies Aimbot (which also aims at these). Outside Zombies
+     * Raven's rules apply: only mobs that target you, which client-side on a server comes down to silverfish and iron
+     * golems (mob AI only runs on the server).
+     */
+    private static boolean isZombiesTarget(Entity entity) {
+        if (!ZombiesGameHelper.isInZombies()) {
+            return false;
+        }
+
+        if (entity instanceof WitherEntity) {
+            // Skips the invisible wither Hypixel uses to draw boss bars.
+            return ZombiesMobs.isWitherBoss(entity);
+        }
+
+        return entity instanceof MonsterEntity
+                || entity instanceof GolemEntity
+                || entity instanceof SlimeEntity
+                || entity instanceof GhastEntity
+                || entity instanceof WolfEntity;
     }
 
     private boolean isHostile(PathFinderMobEntity entityCreature) {

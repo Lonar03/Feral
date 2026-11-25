@@ -19,13 +19,10 @@ final class RavenProfileCompat {
             case "Anti Shuffle":
                 // Renamed to Unscramble (other)
                 return "Unscramble";
-            case "Account Hider":
-                // Meower's Name Hider (renamed, + custom skin). "Hide name" off meant the name wasn't hidden.
-                // this will be removed once I add account hider to Feral
-                if (info.has("Hide name") && !info.get("Hide name").getAsBoolean()) {
-                    info.add("enabled", new JsonPrimitive(false));
-                }
-                return "Name Hider";
+            case "Name Hider":
+                // Renamed to Account Hider (+ Hide name toggle and custom skin), like Meower. Meower profiles
+                // already save it as Account Hider.
+                return "Account Hider";
             case "Bridge Assist":
                 rename(info, "Sneak key pressed", "Only while sneaking");
                 rename(info, "Holding blocks", "Blocks only");

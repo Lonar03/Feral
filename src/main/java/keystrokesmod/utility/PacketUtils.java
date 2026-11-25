@@ -4,6 +4,7 @@ import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.Set;
 import keystrokesmod.Feral;
+import keystrokesmod.platform.ClientPlatform;
 import net.minecraft.network.packet.Packet;
 import net.minecraft.network.packet.c2s.play.PlayerHandActionC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerHandActionC2SPacket.Action;
@@ -25,7 +26,7 @@ public class PacketUtils implements IMinecraftInstance {
     }
 
     public static void sendPacketNoEvent(Packet packet) {
-        if (packet != null && !packet.getClass().getSimpleName().startsWith("S")) {
+        if (packet != null && !ClientPlatform.className(packet.getClass()).startsWith("S")) {
             skipSendEvent.add(packet);
             Feral.mc.player.networkHandler.sendPacket(packet);
         }

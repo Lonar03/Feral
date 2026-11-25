@@ -13,8 +13,8 @@ import keystrokesmod.module.impl.minigames.DuelsStats;
 import keystrokesmod.module.impl.movement.BHop;
 import keystrokesmod.module.impl.movement.Fly;
 import keystrokesmod.module.impl.movement.Speed;
+import keystrokesmod.module.impl.other.AccountHider;
 import keystrokesmod.module.impl.other.FakeChat;
-import keystrokesmod.module.impl.other.NameHider;
 import keystrokesmod.utility.profile.Profile;
 import net.minecraft.client.render.TextRenderer;
 import org.lwjgl.opengl.GL11;
@@ -73,9 +73,9 @@ public class CommandHandler implements IMinecraftInstance {
 
     private static void handleNameHiderCommand(String[] args) {
         if (args != null && args.length >= 2) {
-            NameHider.setFakeName(String.join(" ", Arrays.copyOfRange(args, 1, args.length)));
+            AccountHider.setFakeName(String.join(" ", Arrays.copyOfRange(args, 1, args.length)));
             print("&aName has been set to:", 1);
-            print("\"" + NameHider.fakeName + "\"", 0);
+            print("\"" + AccountHider.fakeName + "\"", 0);
         } else {
             print("&cInvalid syntax.", 1);
         }
@@ -352,6 +352,7 @@ public class CommandHandler implements IMinecraftInstance {
                 case "nick":
                     handleNickCommand(args);
                     break;
+                case "accounthider":
                 case "namehider":
                     handleNameHiderCommand(args);
                     break;
@@ -410,7 +411,7 @@ public class CommandHandler implements IMinecraftInstance {
                     print("3 profiles load [profile]", 0);
                     print("4 profiles remove [profile]", 0);
                     print("&eModule-specific:", 0);
-                    print("1 namehider [name]", 0);
+                    print("1 accounthider [name]", 0);
                     print("2 fakechat [msg]", 0);
                     print("3 setspeed [fly/bhop/speed] [value]", 0);
                     print("4 setvelocity [h/v] [value]", 0);

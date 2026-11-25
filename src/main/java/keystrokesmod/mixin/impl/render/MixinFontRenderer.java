@@ -1,7 +1,7 @@
 package keystrokesmod.mixin.impl.render;
 
 import keystrokesmod.module.ModuleManager;
-import keystrokesmod.module.impl.other.NameHider;
+import keystrokesmod.module.impl.other.AccountHider;
 import keystrokesmod.module.impl.other.Unscramble;
 import keystrokesmod.platform.ornithe.ForgeEvents;
 import net.minecraft.client.render.TextRenderer;
@@ -27,8 +27,8 @@ public class MixinFontRenderer {
             string = ModuleManager.bedwars.filterScoreboardLine(string);
         }
 
-        if (ModuleManager.nameHider != null && ModuleManager.nameHider.isEnabled()) {
-            string = NameHider.getFakeName(string);
+        if (ModuleManager.accountHider != null && ModuleManager.accountHider.isEnabled()) {
+            string = AccountHider.getFakeName(string);
         }
 
         if (ModuleManager.unscramble != null && ModuleManager.unscramble.isEnabled()) {
@@ -53,8 +53,8 @@ public class MixinFontRenderer {
             string = ModuleManager.bedwars.filterScoreboardLine(string);
         }
 
-        if (ModuleManager.nameHider != null && ModuleManager.nameHider.isEnabled()) {
-            string = NameHider.getFakeName(string);
+        if (ModuleManager.accountHider != null && ModuleManager.accountHider.isEnabled()) {
+            string = AccountHider.getFakeName(string);
         }
 
         if (ModuleManager.unscramble != null && ModuleManager.unscramble.isEnabled()) {

@@ -17,7 +17,7 @@ import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import keystrokesmod.module.ModuleManager;
-import keystrokesmod.module.impl.other.NameHider;
+import keystrokesmod.module.impl.other.AccountHider;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.render.Window;
 import net.minecraft.client.render.platform.GlStateManager;
@@ -561,8 +561,8 @@ public final class GlyphFontRenderer implements FeralFontRenderer {
     }
 
     private static String hideNames(String text) {
-        return text != null && ModuleManager.nameHider != null && ModuleManager.nameHider.isEnabled()
-                ? NameHider.getFakeName(text)
+        return text != null && ModuleManager.accountHider != null && ModuleManager.accountHider.isEnabled()
+                ? AccountHider.getFakeName(text)
                 : text;
     }
 

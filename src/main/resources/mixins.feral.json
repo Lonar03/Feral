@@ -16,6 +16,7 @@
         "entity.MixinEntityLivingBase",
         "network.MixinNetworkManager",
         "entity.MixinEntityPlayerRender",
+        "entity.MixinAbstractClientPlayer",
         "render.MixinRendererLivingEntity",
         "render.MixinGlStateManager",
         "render.MixinEntityRenderer",

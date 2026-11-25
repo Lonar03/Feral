@@ -3,6 +3,7 @@ package keystrokesmod.lag.api;
 import java.util.EnumSet;
 import java.util.Set;
 import java.util.function.Consumer;
+import keystrokesmod.platform.ClientPlatform;
 import keystrokesmod.utility.IMinecraftInstance;
 import keystrokesmod.utility.Utils;
 import net.minecraft.network.DifferentThreadException;
@@ -15,8 +16,7 @@ public enum EnumLagDirection implements IMinecraftInstance {
             ((Packet) packet).handle(mc.getNetworkHandler());
         } catch (DifferentThreadException var2) {
         } catch (Exception e) {
-            Utils.sendDebugMessage(
-                    "error while handling packet: " + packet.getClass().getSimpleName());
+            Utils.sendDebugMessage("error while handling packet: " + ClientPlatform.className(packet.getClass()));
         }
     }),
     OUTBOUND(packet -> mc.getNetworkHandler().sendPacket(packet));
