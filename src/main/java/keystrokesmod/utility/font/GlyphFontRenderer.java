@@ -1,11 +1,14 @@
 package keystrokesmod.utility.font;
 
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+import java.awt.Shape;
 import java.awt.font.FontRenderContext;
+import java.awt.font.GlyphVector;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
@@ -42,9 +45,21 @@ public final class GlyphFontRenderer implements FeralFontRenderer {
     private final float fontHeight;
     private final float lineHeight;
     private boolean destroyed;
+    private final float rawStrokeWidth;
+    private final int strokePad;
 
     public GlyphFontRenderer(Font sourceFont, boolean antiAlias) {
+        this(sourceFont, antiAlias, 0.0F);
+    }
+
+    /**
+     * @param thickness extra letter weight in GUI pixels; each glyph gets an outline of this width traced around it
+     *     before it is uploaded, so 0 renders the font as-is (same as MeowerClient).
+     */
+    public GlyphFontRenderer(Font sourceFont, boolean antiAlias, float thickness) {
         float renderScale = resolveRenderScale();
+        this.rawStrokeWidth = Math.max(0.0F, thickness) * renderScale;
+        this.strokePad = (int) Math.ceil(this.rawStrokeWidth / 2.0F);
         this.drawScale = 1.0F / renderScale;
         this.rawScale = renderScale;
         this.renderFont =
@@ -318,9 +333,11 @@ public final class GlyphFontRenderer implements FeralFontRenderer {
             this.applyRenderHints(metricsGraphics);
             FontMetrics metrics = metricsGraphics.getFontMetrics();
             Rectangle2D bounds = metrics.getStringBounds(glyphText, metricsGraphics);
-            float rawAdvance = Math.max(1.0F, (float) bounds.getWidth());
+            // The outline grows each glyph by strokePad on every side; widen its advance to match so thicker
+            // letters keep the same gap between them.
+            float rawAdvance = Math.max(1.0F, (float) bounds.getWidth()) + this.strokePad * 2;
             int textureWidth = Math.max(1, (int) Math.ceil(rawAdvance) + 8);
-            int textureHeight = Math.max(1, metrics.getHeight());
+            int textureHeight = Math.max(1, metrics.getHeight() + this.strokePad * 2);
             BufferedImage glyphImage = new BufferedImage(textureWidth, textureHeight, 2);
             Graphics2D glyphGraphics = glyphImage.createGraphics();
 
@@ -330,7 +347,19 @@ public final class GlyphFontRenderer implements FeralFontRenderer {
                 glyphGraphics.clearRect(0, 0, textureWidth, textureHeight);
                 glyphGraphics.setColor(Color.WHITE);
                 this.applyRenderHints(glyphGraphics);
-                glyphGraphics.drawString(glyphText, 4, metrics.getAscent());
+                int originX = 4 + this.strokePad;
+                int baselineY = metrics.getAscent() + this.strokePad;
+                if (this.rawStrokeWidth > 0.0F) {
+                    GlyphVector glyphVector =
+                            this.renderFont.createGlyphVector(glyphGraphics.getFontRenderContext(), glyphText);
+                    Shape outline = glyphVector.getOutline(originX, baselineY);
+                    glyphGraphics.fill(outline);
+                    glyphGraphics.setStroke(
+                            new BasicStroke(this.rawStrokeWidth, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                    glyphGraphics.draw(outline);
+                } else {
+                    glyphGraphics.drawString(glyphText, originX, baselineY);
+                }
             } finally {
                 glyphGraphics.dispose();
             }

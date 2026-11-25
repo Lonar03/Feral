@@ -77,6 +77,7 @@ public class Feral {
         moduleManager.register();
         keystrokesmod.helper.zombies.ZombiesGameHelper.init();
         ForgeEvents.MinecraftForge.EVENT_BUS.register(new BlockHighlightSharedHandler());
+        ForgeEvents.MinecraftForge.EVENT_BUS.register(new keystrokesmod.clickgui.BigCatEvents());
         scriptManager = new ScriptManager();
         keyStrokeRenderer = new KeyStrokeRenderer();
         clickGui = new ClickGui();
