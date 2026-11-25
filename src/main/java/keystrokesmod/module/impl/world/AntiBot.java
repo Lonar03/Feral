@@ -188,7 +188,7 @@ public class AntiBot extends Module {
                 + p.getDisplayName().getString() + (watchdog ? " &7(&cwatchdog&7)" : "");
 
         try {
-            LiteralText text = new LiteralText(Chat.color("&7[&dR&7]&r " + s));
+            LiteralText text = new LiteralText(Chat.color("&7[&dF&7]&r " + s));
             String hover = "&ename: &r"
                     + p.getName()
                     + "\n&edisplay name: &r"

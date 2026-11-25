@@ -10,6 +10,7 @@ import keystrokesmod.module.ModuleManager;
 import keystrokesmod.module.setting.impl.ButtonSetting;
 import keystrokesmod.module.setting.impl.DescriptionSetting;
 import keystrokesmod.module.setting.impl.SliderSetting;
+import keystrokesmod.platform.ClientPlatform;
 import keystrokesmod.platform.ornithe.ForgeEvents;
 import keystrokesmod.utility.Theme;
 import keystrokesmod.utility.Utils;
@@ -334,8 +335,7 @@ public class Freeze extends Module {
                     }
                 } catch (DifferentThreadException var12) {
                 } catch (Exception exception) {
-                    Utils.sendDebugMessage(
-                            "Freeze failed to release " + packet.getClass().getSimpleName());
+                    Utils.sendDebugMessage("Freeze failed to release " + ClientPlatform.className(packet.getClass()));
                 }
             }
         } finally {

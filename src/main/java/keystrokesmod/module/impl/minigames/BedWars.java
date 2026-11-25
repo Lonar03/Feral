@@ -1065,7 +1065,7 @@ public class BedWars extends Module {
                     return;
                 }
 
-                if (oclass.getSimpleName().equals("EntityIronGolem")) {
+                if (oclass == IronGolemEntity.class) {
                     this.entitySpawnQueue.add(new SkyWars.SpawnEggInfo(p.getPos(), mc.player.ticks));
                 }
             }

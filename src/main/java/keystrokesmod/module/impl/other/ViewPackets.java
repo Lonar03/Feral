@@ -67,11 +67,11 @@ public class ViewPackets extends Module {
 
     private void sendMessage(Packet packet, boolean b) {
         if (Utils.nullCheck()) {
-            String s = b ? "&a" + packet.getClass().getSimpleName() : this.applyInfo(packet);
+            String s = b ? "&a" + ClientPlatform.className(packet.getClass()) : this.applyInfo(packet);
             String string = (this.compactC03.isToggled() && packet instanceof PlayerMoveC2SPacket ? "&6" : "&d")
-                    + packet.getClass().getSimpleName();
+                    + ClientPlatform.className(packet.getClass());
             LiteralText chatComponentText = new LiteralText(
-                    Utils.formatColor("&7[&dR&7]&r &7" + (b ? "Received" : "Sent") + " packet (t:&b" + tick + "&7): "));
+                    Utils.formatColor("&7[&dF&7]&r &7" + (b ? "Received" : "Sent") + " packet (t:&b" + tick + "&7): "));
             Style chatStyle = new Style();
             chatStyle.setHoverEvent(new HoverEvent(Action.SHOW_TEXT, new LiteralText(Utils.formatColor(s))));
             chatComponentText.append(new LiteralText(Utils.formatColor(string)).setStyle(chatStyle));
@@ -84,7 +84,7 @@ public class ViewPackets extends Module {
         if (this.sent.isToggled()) {
             if (!this.singlePlayer.isToggled()
                     || !mc.isSingleplayer()
-                    || e.getPacket().getClass().getSimpleName().charAt(0) != 'S') {
+                    || ClientPlatform.className(e.getPacket().getClass()).charAt(0) != 'S') {
                 if (!e.isCanceled() || this.includeCancelled.isToggled()) {
                     if (!this.ignoreC00.isToggled() || !(e.getPacket() instanceof KeepAliveC2SPacket)) {
                         if (!this.ignoreC0F.isToggled() || !(e.getPacket() instanceof InventoryMenuConfirmC2SPacket)) {
@@ -107,7 +107,7 @@ public class ViewPackets extends Module {
         if (this.sent.isToggled()) {
             if (!this.singlePlayer.isToggled()
                     || !mc.isSingleplayer()
-                    || e.getPacket().getClass().getSimpleName().charAt(0) != 'S') {
+                    || ClientPlatform.className(e.getPacket().getClass()).charAt(0) != 'S') {
                 if (!e.isCanceled() || this.includeCancelled.isToggled()) {
                     if (!this.ignoreC00.isToggled() || !(e.getPacket() instanceof KeepAliveC2SPacket)) {
                         if (!this.ignoreC0F.isToggled() || !(e.getPacket() instanceof InventoryMenuConfirmC2SPacket)) {
@@ -130,14 +130,14 @@ public class ViewPackets extends Module {
         if (this.received.isToggled()) {
             if (!this.singlePlayer.isToggled()
                     || !mc.isSingleplayer()
-                    || e.getPacket().getClass().getSimpleName().charAt(0) != 'C') {
+                    || ClientPlatform.className(e.getPacket().getClass()).charAt(0) != 'C') {
                 this.sendMessage(e.getPacket(), true);
             }
         }
     }
 
     private String applyInfo(Packet packet) {
-        String s = "&a" + packet.getClass().getSimpleName();
+        String s = "&a" + ClientPlatform.className(packet.getClass());
         if (packet instanceof PlayerHandActionC2SPacket) {
             PlayerHandActionC2SPacket c07PacketPlayerDigging = (PlayerHandActionC2SPacket) packet;
             String string =

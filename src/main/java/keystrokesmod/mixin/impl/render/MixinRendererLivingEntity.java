@@ -2,7 +2,7 @@ package keystrokesmod.mixin.impl.render;
 
 import java.awt.Color;
 import keystrokesmod.module.ModuleManager;
-import keystrokesmod.module.impl.other.NameHider;
+import keystrokesmod.module.impl.other.AccountHider;
 import keystrokesmod.module.impl.render.DamageTint;
 import keystrokesmod.module.impl.render.MobESP;
 import keystrokesmod.module.impl.render.PlayerESP;
@@ -183,14 +183,14 @@ public abstract class MixinRendererLivingEntity<T extends LivingEntity> extends 
             at = @At("STORE"),
             ordinal = 0)
     private String nameHider$hideRenderedName(String displayName) {
-        if (displayName == null || ModuleManager.nameHider == null || !ModuleManager.nameHider.isEnabled()) {
+        if (displayName == null || ModuleManager.accountHider == null || !ModuleManager.accountHider.isEnabled()) {
             return displayName;
         } else if (this.nameHider$renderNameEntity instanceof PlayerEntity) {
             PlayerEntity entityPlayer = (PlayerEntity) (Object) this.nameHider$renderNameEntity;
-            return NameHider.getPlayerDisplayName(entityPlayer, entityPlayer.getDisplayName())
+            return AccountHider.getPlayerDisplayName(entityPlayer, entityPlayer.getDisplayName())
                     .getFormattedString();
         } else {
-            return NameHider.getFakeName(displayName);
+            return AccountHider.getFakeName(displayName);
         }
     }
 

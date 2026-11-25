@@ -445,7 +445,7 @@ public class Anticheat extends Module {
             double d = mc.player.distanceTo(p);
             String s = p.getDisplayName().getString() + " &7detected for &d" + check.displayName + " "
                     + AnticheatContext.distance(d);
-            LiteralText text = new LiteralText(Utils.formatColor("&7[&dR&7]&r " + s));
+            LiteralText text = new LiteralText(Utils.formatColor("&7[&dF&7]&r " + s));
             if (hypixel && sendPartyChat.isToggled()) {
                 partyMessage = Utils.stripColor(text.getString());
             }

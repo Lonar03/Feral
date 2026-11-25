@@ -29,11 +29,15 @@ public final class FontManager {
     private static final String RESOURCE_ROOT = "/assets/keystrokesmod/fonts/";
     private static final long MAX_CUSTOM_FONT_BYTES = 33554432L;
     private static final int MAX_CACHED_RENDERERS = 512;
+    // Crafty Girls font (Meower bundles it as "MeowClient-Regular") + size/thickness, same as MeowerClient
+    private static final String DEFAULT_FONT = "Crafty Girls";
+    private static final float MAX_THICKNESS = 1.0F;
     private static final float DEFAULT_HUD_FONT_SIZE = 10.0F;
     private static final float DEFAULT_CLICK_GUI_HEADER_HEIGHT = 9.0F;
     private static final float DEFAULT_CLICK_GUI_SETTING_HEIGHT = 9.0F;
     private static final float DEFAULT_NAMETAG_FONT_SIZE = 9.0F;
     private static final FontManager.FontDefinition[] BUNDLED_FONTS = new FontManager.FontDefinition[] {
+        FontManager.FontDefinition.bundled("Crafty Girls", "CraftyGirls-Regular.ttf"),
         FontManager.FontDefinition.bundled("Sf-Bold", "Sf-Bold.ttf"),
         FontManager.FontDefinition.bundled("Sf-Regular", "Sf-Regular.ttf"),
         FontManager.FontDefinition.bundled("Sf-Ui", "Sf-Ui.ttf")
@@ -49,7 +53,7 @@ public final class FontManager {
     private FontManager() {}
 
     public static String getDefaultFontName() {
-        return "Minecraft";
+        return DEFAULT_FONT;
     }
 
     public static File getFontDirectory() {
@@ -73,7 +77,9 @@ public final class FontManager {
     }
 
     public static SliderSetting createFontSetting(String settingName) {
-        SliderSetting setting = new SliderSetting(settingName, 0, getHudFontOptions());
+        String[] options = getHudFontOptions();
+        int defaultIndex = Math.max(0, java.util.Arrays.asList(options).indexOf(DEFAULT_FONT));
+        SliderSetting setting = new SliderSetting(settingName, defaultIndex, options);
         FONT_SETTINGS.add(setting);
         return setting;
     }
@@ -138,16 +144,37 @@ public final class FontManager {
     }
 
     public static FeralFontRenderer getHudRenderer(String family, float scale) {
+        return getHudRenderer(family, scale, 0.0F);
+    }
+
+    /** @param thickness extra letter weight in GUI pixels (0 = the font as designed). */
+    public static FeralFontRenderer getHudRenderer(String family, float scale, float thickness) {
         float safeScale = Math.max(0.5F, Math.min(2.0F, scale));
-        return getRenderer(family, 10.0F * safeScale);
+        return getRenderer(family, 10.0F * safeScale, thickness);
     }
 
     public static FeralFontRenderer getClickGuiHeaderRenderer(String family) {
-        return getRendererForPixelHeight(family, 9.0F);
+        return getClickGuiHeaderRenderer(family, 1.0F, 0.0F);
+    }
+
+    public static FeralFontRenderer getClickGuiHeaderRenderer(String family, float sizeMultiplier, float thickness) {
+        return getRendererForPixelHeight(family, 9.0F * clampSizeMultiplier(sizeMultiplier), thickness);
     }
 
     public static FeralFontRenderer getClickGuiSettingRenderer(String family) {
-        return getRendererForPixelHeight(family, 9.0F);
+        return getClickGuiSettingRenderer(family, 1.0F, 0.0F);
+    }
+
+    public static FeralFontRenderer getClickGuiSettingRenderer(String family, float sizeMultiplier, float thickness) {
+        return getRendererForPixelHeight(family, 9.0F * clampSizeMultiplier(sizeMultiplier), thickness);
+    }
+
+    private static float clampSizeMultiplier(float sizeMultiplier) {
+        return Math.max(0.5F, Math.min(2.0F, sizeMultiplier));
+    }
+
+    private static float clampThickness(float thickness) {
+        return Math.max(0.0F, Math.min(MAX_THICKNESS, thickness));
     }
 
     public static FeralFontRenderer getNametagRenderer(String family) {
@@ -155,20 +182,26 @@ public final class FontManager {
     }
 
     public static FeralFontRenderer getRenderer(String family, float fontSize) {
+        return getRenderer(family, fontSize, 0.0F);
+    }
+
+    public static FeralFontRenderer getRenderer(String family, float fontSize, float thickness) {
         final float safeFontSize = Math.max(1.0F, fontSize);
+        final float safeThickness = clampThickness(thickness);
         if (family != null && !isMinecraftFont(family)) {
             final FontManager.FontDefinition fontDefinition = fontDefinitions.get(family);
             if (fontDefinition == null) {
                 return getMinecraftRenderer(safeFontSize);
             }
 
-            String key = family + "#" + quantizeForCacheKey(safeFontSize) + "#" + getUiScale();
+            String key = family + "#" + quantizeForCacheKey(safeFontSize) + "#t" + quantizeForCacheKey(safeThickness)
+                    + "#" + getUiScale();
             return getCachedRenderer(key, new Supplier<FeralFontRenderer>() {
                 public FeralFontRenderer get() {
                     Font baseFont = FontManager.getBaseFont(fontDefinition);
                     return baseFont == null
                             ? FontManager.getMinecraftRenderer(safeFontSize)
-                            : new GlyphFontRenderer(baseFont.deriveFont(safeFontSize), true);
+                            : new GlyphFontRenderer(baseFont.deriveFont(safeFontSize), true, safeThickness);
                 }
             });
         } else {
@@ -177,20 +210,26 @@ public final class FontManager {
     }
 
     public static FeralFontRenderer getRendererForPixelHeight(String family, float targetHeight) {
+        return getRendererForPixelHeight(family, targetHeight, 0.0F);
+    }
+
+    public static FeralFontRenderer getRendererForPixelHeight(String family, float targetHeight, float thickness) {
         final float safeTargetHeight = Math.max(1.0F, targetHeight);
+        final float safeThickness = clampThickness(thickness);
         if (family != null && !isMinecraftFont(family)) {
             final FontManager.FontDefinition fontDefinition = fontDefinitions.get(family);
             if (fontDefinition == null) {
                 return getMinecraftRenderer(safeTargetHeight);
             }
 
-            String key = family + "#height#" + quantizeForCacheKey(safeTargetHeight) + "#" + getUiScale();
+            String key = family + "#height#" + quantizeForCacheKey(safeTargetHeight) + "#t"
+                    + quantizeForCacheKey(safeThickness) + "#" + getUiScale();
             return getCachedRenderer(key, new Supplier<FeralFontRenderer>() {
                 public FeralFontRenderer get() {
                     Font baseFont = FontManager.getBaseFont(fontDefinition);
                     return baseFont == null
                             ? FontManager.getMinecraftRenderer(safeTargetHeight)
-                            : FontManager.createHeightMatchedRenderer(baseFont, safeTargetHeight);
+                            : FontManager.createHeightMatchedRenderer(baseFont, safeTargetHeight, safeThickness);
                 }
             });
         } else {
@@ -198,9 +237,9 @@ public final class FontManager {
         }
     }
 
-    private static FeralFontRenderer createHeightMatchedRenderer(Font baseFont, float targetHeight) {
+    private static FeralFontRenderer createHeightMatchedRenderer(Font baseFont, float targetHeight, float thickness) {
         float derivedSize = targetHeight;
-        GlyphFontRenderer renderer = new GlyphFontRenderer(baseFont.deriveFont(derivedSize), true);
+        GlyphFontRenderer renderer = new GlyphFontRenderer(baseFont.deriveFont(derivedSize), true, thickness);
 
         for (int i = 0; i < 2; i++) {
             float measuredHeight = Math.max(1.0F, renderer.getFontHeight());
@@ -211,7 +250,7 @@ public final class FontManager {
 
             GlyphFontRenderer previousRenderer = renderer;
             derivedSize = Math.max(1.0F, derivedSize * (targetHeight / measuredHeight));
-            renderer = new GlyphFontRenderer(baseFont.deriveFont(derivedSize), true);
+            renderer = new GlyphFontRenderer(baseFont.deriveFont(derivedSize), true, thickness);
             previousRenderer.destroy();
         }
 

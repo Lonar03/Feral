@@ -1,0 +1,73 @@
+-29 68 20 Cr3
+-16 68 0 Cr2
+-4 68 -3 Cr1
+-13 73 28 M3
+0 74 18 M2
+0 74 -18 M1
+-42 68 27 B4
+-54 72 12 B3
+-57 74 2 B2
+-33 74 -19 B1
+-54 74 -34 L6
+-55 74 -47 L5
+-40 74 -58 L4
+-41 74 -31 L3
+1 74 -45 L1
+-21 74 -30 L2
+-20 74 -14 Gh1
+-28 74 15 Gh2
+-32 76 15 Gh3
+-36 68 31 Gy1
+-17 68 50 Gy2
+-7 68 33 Gy3
+-11 68 -50 D1
+-29 68 -35 D2
+-10 68 -23 D3
+-10 68 -19 D4
+-37 68 -12 D5
+19 69 20 Co1
+30 69 10 Co2
+24 69 -19 Co3
+12 69 -18 Co4
+6 72 31 P1
+-23 72 15 P2
+-22 72 10 P3
+-11 72 -6 P4
+22 72 13 P5
+17 72 44 Alt
+27 72 31 Ult
+33 73 -2 Bumper Rail
+22 73 -14 Bumper Perk
+-29 72 27 Roller Left
+-13 72 39 Roller Right
+2 105 13 Mid
+2 105 11 Mid
+-2 105 11 Mid
+-2 105 13 Mid
+-1 68 46 Hotel Rifle
+-10 68 14 Hotel Lever
+25 76 -6 Hotel Frozen
+26 69 3 Hotel Flame
+25 69 -4 Hotel Gar
+-4 76 -22 Hotel Leather
+-16 76 15 Apt Power
+-14 76 51 Apt Chest
+-5 76 62 Apt Leggings
+19 76 9 Apt HotelDoor
+3 83 62 Power RL
+-3 83 32 Power Switch
+-6 83 66 Power Roof
+-16 83 64 Rooftop Power
+-50 83 38 Rooftop Corner
+-14 83 30 Rooftop EH
+-38 83 25 Rooftop Other
+57 76 64 Office Back
+52 76 31 Office Sg
+42 76 26 Office Far
+24 68 -34 Garden Back
+34 68 -17 Garden Sign
+0 68 -17 Garden Hot
+4 69 43 Alley Office
+6 69 31 Alley Fastrev
+42 70 29 Alley Sla
+39 70 8 Alley Corner

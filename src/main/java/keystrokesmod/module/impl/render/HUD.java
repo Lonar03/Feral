@@ -5,6 +5,7 @@ import keystrokesmod.module.Module;
 import keystrokesmod.module.ModuleManager;
 import keystrokesmod.module.impl.combat.AntiKnockback;
 import keystrokesmod.module.impl.combat.Velocity;
+import keystrokesmod.module.setting.Setting;
 import keystrokesmod.module.setting.impl.ButtonSetting;
 import keystrokesmod.module.setting.impl.ColorSetting;
 import keystrokesmod.module.setting.impl.SliderSetting;
@@ -24,6 +25,8 @@ public class HUD extends Module {
     private static final String[] WAVE_AXES = new String[] {"Vertical", "Horizontal"};
     private static final String[] VERTICAL_WAVE_DIRECTIONS = new String[] {"Down", "Up"};
     private static final String[] HORIZONTAL_WAVE_DIRECTIONS = new String[] {"Left", "Right"};
+    private static final String[] ARRAYLIST_STYLES = new String[] {"Raven", "Big cat"};
+    private static final String[] CORNERS = new String[] {"Top left", "Top right", "Bottom left", "Bottom right"};
     private static final double HUD_WAVE_HORIZONTAL_X_SCALE = 0.35;
     private static final long HUD_RAINBOW_PERIOD_MS = 7500L;
     private static final double HUD_WAVE_ANGLE_SCALE = 0.12;
@@ -38,11 +41,18 @@ public class HUD extends Module {
     public static SliderSetting waveLength;
     public static SliderSetting font;
     public static SliderSetting fontSize;
+    public static SliderSetting arraylistStyle;
+    /** Big cat arraylist only (moved from the Gui module's Big cat settings). */
+    public static SliderSetting catCorner;
+
+    public static SliderSetting catScale;
+    public static SliderSetting catOpacity;
     private static SliderSetting outline;
     public static ButtonSetting alphabeticalSort;
     private static ButtonSetting drawBackground;
     private static ButtonSetting textShadow;
     private static ButtonSetting alignRight;
+    private static ButtonSetting editPosition;
     private static ButtonSetting lowercase;
     public static ButtonSetting showInfo;
     private static final float DEFAULT_POS_X = 5.0F;
@@ -62,6 +72,10 @@ public class HUD extends Module {
 
     public HUD() {
         super("HUD", Module.category.render);
+        this.registerSetting(arraylistStyle = new SliderSetting("Arraylist", 0, ARRAYLIST_STYLES));
+        this.registerSetting(catCorner = new SliderSetting("Arraylist corner", 1, CORNERS));
+        this.registerSetting(catScale = new SliderSetting("Arraylist scale", "x", 1.0, 0.6, 2.0, 0.05));
+        this.registerSetting(catOpacity = new SliderSetting("Arraylist opacity", "%", 100.0, 0.0, 100.0, 1.0));
         this.registerSetting(colorMode = new SliderSetting("Color mode", 0, COLOR_MODES));
         this.registerSetting(theme = new SliderSetting("Theme", DEFAULT_THEME_INDEX, Theme.THEMES_SETTING));
         this.registerSetting(hudColor = new ColorSetting("Color", 255, 255, 255));
@@ -75,7 +89,8 @@ public class HUD extends Module {
         this.registerSetting(font = FontManager.createFontSetting("Font"));
         this.registerSetting(fontSize = new SliderSetting("Scale", 1.0, 0.5, 2.0, 0.1));
         this.registerSetting(outline = new SliderSetting("Outline", 0, OUTLINE_MODES));
-        this.registerSetting(new ButtonSetting("Edit position", () -> mc.openScreen(new HUD.EditScreen())));
+        this.registerSetting(
+                editPosition = new ButtonSetting("Edit position", () -> mc.openScreen(new HUD.EditScreen())));
         this.registerSetting(alignRight = new ButtonSetting("Align right", false));
         this.registerSetting(alphabeticalSort = new ButtonSetting("Alphabetical sort", false));
         this.registerSetting(drawBackground = new ButtonSetting("Draw background", false));
@@ -86,6 +101,18 @@ public class HUD extends Module {
 
     @Override
     public void guiUpdate() {
+        boolean bigCat = arraylistStyle != null && (int) arraylistStyle.getInput() == 1;
+        for (Setting setting : this.getSettings()) {
+            if (setting == arraylistStyle || setting == showInfo) {
+                continue;
+            }
+            boolean catSetting = setting == catCorner || setting == catScale || setting == catOpacity;
+            setting.setVisible(catSetting == bigCat, this);
+        }
+        if (bigCat) {
+            return;
+        }
+
         int mode = colorMode == null ? 0 : (int) colorMode.getInput();
         boolean staticMode = mode == 0;
         boolean gradientMode = mode == 1;
@@ -126,6 +153,12 @@ public class HUD extends Module {
         }
     }
 
+    /** Whether the HUD should use the Big Cat GUI's arraylist renderer. */
+    public static boolean isCatArraylistSelected() {
+        Module hud = ModuleManager.getModule(HUD.class);
+        return hud != null && hud.isEnabled() && arraylistStyle != null && (int) arraylistStyle.getInput() == 1;
+    }
+
     @Override
     public void onEnable() {
         this.guiUpdate();
@@ -161,7 +194,8 @@ public class HUD extends Module {
                 ModuleManager.sort();
             }
 
-            if (mc.screen == null && !mc.options.debugEnabled) {
+            // The Big cat arraylist is drawn by BigCatGui (BigCatEvents).
+            if (mc.screen == null && !mc.options.debugEnabled && !isCatArraylistSelected()) {
                 syncPositionToResolution();
 
                 for (Module module : ModuleManager.organizedModules) {

@@ -150,4 +150,62 @@ public class MixinNetHandlerPlayClient {
 
         explosion.damageBlocks(particles);
     }
+
+    // The Zombies/KeepInventory hooks below run after the main-thread handoff, so they fire once per packet.
+
+    @Inject(
+            method = "handleOpenInventoryMenu",
+            at =
+                    @At(
+                            value = "INVOKE",
+                            target =
+                                    "Lnet/minecraft/network/PacketUtils;ensureOnSameThread(Lnet/minecraft/network/packet/Packet;Lnet/minecraft/network/handler/PacketHandler;Lnet/minecraft/util/BlockableEventLoop;)V",
+                            shift = At.Shift.AFTER))
+    private void feral$onOpenWindow(
+            net.minecraft.network.packet.s2c.play.OpenInventoryMenuS2CPacket packet, CallbackInfo ci) {
+        String title = packet.getDisplayName() != null ? packet.getDisplayName().getString() : null;
+        keystrokesmod.module.impl.player.KeepInventory.onOpenWindowPacket(packet.getMenuId(), title);
+    }
+
+    @Inject(
+            method = "handleCloseInventoryMenu",
+            at =
+                    @At(
+                            value = "INVOKE",
+                            target =
+                                    "Lnet/minecraft/network/PacketUtils;ensureOnSameThread(Lnet/minecraft/network/packet/Packet;Lnet/minecraft/network/handler/PacketHandler;Lnet/minecraft/util/BlockableEventLoop;)V",
+                            shift = At.Shift.AFTER))
+    private void feral$onCloseWindow(
+            net.minecraft.network.packet.s2c.play.CloseInventoryMenuS2CPacket packet, CallbackInfo ci) {
+        keystrokesmod.module.impl.player.KeepInventory.onServerForcedClose(
+                ((keystrokesmod.mixin.impl.accessor.IAccessorCloseInventoryMenuS2C) packet).getWindowId());
+    }
+
+    @Inject(
+            method = "handleEntityData",
+            at =
+                    @At(
+                            value = "INVOKE",
+                            target =
+                                    "Lnet/minecraft/network/PacketUtils;ensureOnSameThread(Lnet/minecraft/network/packet/Packet;Lnet/minecraft/network/handler/PacketHandler;Lnet/minecraft/util/BlockableEventLoop;)V",
+                            shift = At.Shift.AFTER))
+    private void feral$onEntityMetadata(
+            net.minecraft.network.packet.s2c.play.EntityDataS2CPacket packet, CallbackInfo ci) {
+        java.util.List<net.minecraft.entity.data.SyncedData.Entry> entries = packet.getDataEntries();
+        net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
+        if (entries == null || entries.isEmpty() || mc.world == null) {
+            return;
+        }
+        if (!(mc.world.getEntity(packet.getId()) instanceof net.minecraft.entity.living.ArmorStandEntity)) {
+            return;
+        }
+
+        for (net.minecraft.entity.data.SyncedData.Entry entry : new java.util.ArrayList<>(entries)) {
+            // Data id 2 with type 4 (string) is the custom name.
+            if (entry != null && entry.getType() == 4 && entry.getId() == 2 && entry.getValue() instanceof String) {
+                String name = keystrokesmod.utility.zombies.ZombiesLanguage.clean((String) entry.getValue());
+                keystrokesmod.helper.zombies.ZombiesPowerupHelper.onArmorStandName(name, packet.getId());
+            }
+        }
+    }
 }

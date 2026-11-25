@@ -7,7 +7,6 @@ import java.util.Arrays;
 import java.util.Locale;
 import java.util.Properties;
 import keystrokesmod.Feral;
-import keystrokesmod.keystroke.KeyStrokeCommand;
 import keystrokesmod.platform.ornithe.ForgeEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.MappingResolver;
@@ -127,9 +126,9 @@ public final class ClientPlatform {
 
     public static final class ClientCommandHandler {
         public static final ClientPlatform.ClientCommandHandler instance = new ClientPlatform.ClientCommandHandler();
-        private KeyStrokeCommand command;
+        private net.minecraft.server.command.AbstractCommand command;
 
-        public void registerCommand(KeyStrokeCommand command) {
+        public void registerCommand(net.minecraft.server.command.AbstractCommand command) {
             this.command = command;
         }
 
@@ -140,7 +139,10 @@ public final class ClientPlatform {
                     return false;
                 }
 
-                this.command.run(Minecraft.getInstance().player, Arrays.copyOfRange(words, 1, words.length));
+                try {
+                    this.command.run(Minecraft.getInstance().player, Arrays.copyOfRange(words, 1, words.length));
+                } catch (Exception ignored) {
+                }
                 return true;
             } else {
                 return false;

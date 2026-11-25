@@ -22,6 +22,10 @@ public class Stasis extends Module {
     private double savedZ;
     private int frozenAt;
     private int delay;
+    /** Set by Scaffold (Adjust) auto stasis: turn off again on landing, ladder, teleport or world change. */
+    private Object autoOffPlayer;
+
+    private boolean autoOffTeleport;
 
     public Stasis() {
         super("Stasis", Module.category.movement);
@@ -34,14 +38,37 @@ public class Stasis extends Module {
         this.delay = 2;
     }
 
+    /** Enables Stasis until you land/teleport/change world (like Adjust's Stasis).. */
+    public void enableAuto() {
+        if (!this.isEnabled()) {
+            this.enable();
+            this.autoOffPlayer = mc.player;
+        }
+    }
+
+    public boolean isAuto() {
+        return this.autoOffPlayer != null;
+    }
+
     @Override
     public void onDisable() {
+        this.autoOffPlayer = null;
+        this.autoOffTeleport = false;
         this.freeze(false);
         this.delay = 0;
     }
 
     @ForgeEvents.SubscribeEvent(priority = ForgeEvents.EventPriority.LOWEST)
     public void onPreUpdate(PreUpdateEvent e) {
+        if (this.autoOffPlayer != null
+                && (this.autoOffTeleport
+                        || !Utils.nullCheck()
+                        || mc.player != this.autoOffPlayer
+                        || mc.player.onGround
+                        || mc.player.isClimbing())) {
+            this.disable();
+            return;
+        }
         if (Utils.nullCheck()) {
             if (this.delay > 0 && --this.delay == 0) {
                 this.freeze(true);
@@ -72,6 +99,10 @@ public class Stasis extends Module {
 
     @ForgeEvents.SubscribeEvent(priority = ForgeEvents.EventPriority.LOW)
     public void onReceivePacket(ReceivePacketEvent e) {
+        if (this.autoOffPlayer != null && e.getPacket() instanceof PlayerMoveS2CPacket) {
+            // Packet thread: turn off on the next tick.
+            this.autoOffTeleport = true;
+        }
         if (Utils.nullCheck() && this.frozen) {
             if (e.getPacket() instanceof PlayerMoveS2CPacket) {
                 this.freeze(false);
