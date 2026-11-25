@@ -129,7 +129,7 @@ public class Debug extends Module {
                     this.sentFlying = false;
                 } else {
                     if (this.sentFlying && isPostCheckPacket(packet)) {
-                        this.postQueue.add(packet.getClass().getSimpleName());
+                        this.postQueue.add(ClientPlatform.className(packet.getClass()));
                     }
                 }
             }

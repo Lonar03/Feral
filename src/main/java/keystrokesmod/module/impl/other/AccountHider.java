@@ -1,3 +1,4 @@
+// Custom skin and "Hide name" ported from Meowtils' AccountHider (wtf.tatp.meowtils) via Meower, modified for Feral
 package keystrokesmod.module.impl.other;
 
 import com.google.gson.JsonObject;
@@ -16,22 +17,31 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import keystrokesmod.module.Module;
+import keystrokesmod.module.ModuleManager;
 import keystrokesmod.module.setting.impl.ButtonSetting;
+import keystrokesmod.module.setting.impl.GroupSetting;
+import keystrokesmod.module.setting.impl.SliderSetting;
 import keystrokesmod.module.setting.impl.TextSetting;
+import keystrokesmod.utility.SkinManager;
 import keystrokesmod.utility.TextUtils;
 import keystrokesmod.utility.Utils;
 import net.minecraft.client.network.PlayerInfo;
 import net.minecraft.entity.living.player.PlayerEntity;
+import net.minecraft.resource.Identifier;
 import net.minecraft.text.LiteralText;
 import net.minecraft.text.Text;
 
-public class NameHider extends Module {
+public class AccountHider extends Module {
     private static final long PROFILE_CACHE_REFRESH_MS = 250L;
     private static final int MIN_ALIAS_NUMBER = 1;
     private static final String DEFAULT_FAKE_NAME = "You";
     private static final String DEFAULT_HIDE_ALL_PREFIX = "Player";
     public static String fakeName = "You";
     public static ButtonSetting hideAllNames;
+    public static ButtonSetting hideName;
+    public static ButtonSetting customSkin;
+    public static SliderSetting skin;
+    public static SliderSetting arms;
     public static TextSetting fakeNameSetting;
     public static TextSetting hideAllPrefixSetting;
     private static final LinkedHashSet<String> detectedSelfNames = new LinkedHashSet<>();
@@ -39,6 +49,7 @@ public class NameHider extends Module {
     private static String formattedHideAllPrefix = "Player";
     private static String cachedSelfKey;
     private static boolean cachedHideAllState;
+    private static boolean cachedHideNameState = true;
     private static List<String> cachedSelfNames = Collections.emptyList();
     private static Map<String, List<String>> cachedVisibleNamesByKey = Collections.emptyMap();
     private static List<Entry<String, String>> cachedOtherNameReplacements = Collections.emptyList();
@@ -49,15 +60,16 @@ public class NameHider extends Module {
     private static String lastInput;
     private static String lastOutput;
 
-    public NameHider() {
-        super("Name Hider", Module.category.other);
+    public AccountHider() {
+        super("Account Hider", Module.category.other);
         this.liteModule = true;
+        this.registerSetting(hideName = new ButtonSetting("Hide name", true));
         this.registerSetting(
                 fakeNameSetting = new TextSetting("Fake name", fakeName, "Type a fake name...", 48) {
                     @Override
                     public void setText(String text) {
-                        super.setText(NameHider.normalizeFakeName(text));
-                        NameHider.applyFakeName(this.getText());
+                        super.setText(AccountHider.normalizeFakeName(text));
+                        AccountHider.applyFakeName(this.getText());
                     }
 
                     @Override
@@ -75,8 +87,8 @@ public class NameHider extends Module {
                 hideAllPrefixSetting = new TextSetting("Hide-all prefix", "Player", "Type a prefix...", 24) {
                     @Override
                     public void setText(String text) {
-                        super.setText(NameHider.normalizeHideAllPrefix(text));
-                        NameHider.applyHideAllPrefix(this.getText());
+                        super.setText(AccountHider.normalizeHideAllPrefix(text));
+                        AccountHider.applyHideAllPrefix(this.getText());
                     }
 
                     @Override
@@ -90,6 +102,45 @@ public class NameHider extends Module {
                     }
                 });
         hideAllPrefixSetting.visible = false;
+
+        SkinManager.reloadSkins();
+        GroupSetting skinGroup = new GroupSetting("Custom skin");
+        this.registerSetting(skinGroup);
+        this.registerSetting(customSkin = new ButtonSetting(skinGroup, "Enabled", false));
+        this.registerSetting(skin = new SliderSetting(skinGroup, "Skin", 0, SkinManager.getSkinOptions()));
+        this.registerSetting(arms = new SliderSetting(skinGroup, "Arms", 0, new String[] {"Default", "Slim"}));
+        this.registerSetting(new ButtonSetting("Open skins folder", AccountHider::openSkinsFolder));
+        this.registerSetting(new ButtonSetting("Load skins", AccountHider::loadSkins));
+    }
+
+    private static void openSkinsFolder() {
+        if (!SkinManager.openSkinDirectory()) {
+            Utils.sendMessage("&cCould not open skins folder: &7"
+                    + SkinManager.getSkinDirectory().getAbsolutePath());
+        }
+    }
+
+    private static void loadSkins() {
+        SkinManager.ReloadResult result = SkinManager.reloadSkins();
+        skin.setOptions(SkinManager.getSkinOptions());
+        String message =
+                "&7Loaded &b" + result.getLoaded() + " &7custom skin" + (result.getLoaded() == 1 ? "" : "s") + ".";
+        Utils.sendMessage(result.getFailed() > 0 ? message + " &c" + result.getFailed() + " failed." : message);
+    }
+
+    /** The custom skin for the local player, or null to keep the real one. */
+    public static Identifier getCustomSkin() {
+        return ModuleManager.accountHider != null && ModuleManager.accountHider.isEnabled() && customSkin.isToggled()
+                ? SkinManager.getSkin((int) skin.getInput())
+                : null;
+    }
+
+    public static String getCustomSkinType() {
+        return arms.getInput() == 1.0 ? "slim" : "default";
+    }
+
+    private static boolean hidesOwnName() {
+        return hideName == null || hideName.isToggled();
     }
 
     public static String getFakeName(String input) {
@@ -102,7 +153,7 @@ public class NameHider extends Module {
             return lastOutput;
         }
 
-        String replaced = replaceNames(input, cachedSelfNames, formattedFakeName);
+        String replaced = hidesOwnName() ? replaceNames(input, cachedSelfNames, formattedFakeName) : input;
         if (cachedHideAllState) {
             for (Entry<String, String> entry : cachedOtherNameReplacements) {
                 replaced = TextUtils.replaceKeepingFormatting(replaced, entry.getKey(), entry.getValue());
@@ -144,7 +195,9 @@ public class NameHider extends Module {
         }
 
         if (isSelfKey(key)) {
-            return replaceNames(original, getTabVisibleNames(playerInfo, key), formattedFakeName);
+            return hidesOwnName()
+                    ? replaceNames(original, getTabVisibleNames(playerInfo, key), formattedFakeName)
+                    : original;
         }
 
         if (!cachedHideAllState) {
@@ -173,7 +226,9 @@ public class NameHider extends Module {
 
         String key = getIdentityKey(player);
         if (isSelfPlayer(player, key)) {
-            return replaceNames(original, getEntityVisibleNames(player, key), formattedFakeName);
+            return hidesOwnName()
+                    ? replaceNames(original, getEntityVisibleNames(player, key), formattedFakeName)
+                    : original;
         }
 
         if (!cachedHideAllState) {
@@ -186,6 +241,11 @@ public class NameHider extends Module {
 
     private static void refreshCaches() {
         if (mc.player != null) {
+            if (cachedHideNameState != hidesOwnName()) {
+                cachedHideNameState = hidesOwnName();
+                markCacheDirty();
+            }
+
             boolean hideEveryone = hideAllNames != null && hideAllNames.isToggled();
             if (cachedHideAllState != hideEveryone) {
                 cachedHideAllState = hideEveryone;
@@ -209,7 +269,7 @@ public class NameHider extends Module {
                 long now = System.currentTimeMillis();
                 if (now - lastProfileCacheRefresh >= 250L) {
                     lastProfileCacheRefresh = now;
-                    NameHider.HideAllCache cache = buildHideAllCache(selfNames);
+                    AccountHider.HideAllCache cache = buildHideAllCache(selfNames);
                     if (!cache.visibleNamesByKey.equals(cachedVisibleNamesByKey)
                             || !cache.aliasNumbers.equals(cachedAliasNumbers)
                             || !cache.replacements.equals(cachedOtherNameReplacements)) {
@@ -223,7 +283,7 @@ public class NameHider extends Module {
         }
     }
 
-    private static NameHider.HideAllCache buildHideAllCache(List<String> selfNames) {
+    private static AccountHider.HideAllCache buildHideAllCache(List<String> selfNames) {
         LinkedHashMap<String, LinkedHashSet<String>> targets = new LinkedHashMap<>();
         HashSet<String> protectedNames = new HashSet<>();
 
@@ -240,7 +300,7 @@ public class NameHider extends Module {
         collectTargetsFromTab(targets, protectedNames);
         collectTargetsFromWorld(targets, protectedNames);
         if (targets.isEmpty()) {
-            return NameHider.HideAllCache.EMPTY;
+            return AccountHider.HideAllCache.EMPTY;
         }
 
         LinkedHashMap<String, List<String>> visibleNamesByKey = new LinkedHashMap<>();
@@ -268,7 +328,7 @@ public class NameHider extends Module {
                     Integer.compare(second.getKey().length(), first.getKey().length());
             return lengthCompare != 0 ? lengthCompare : first.getKey().compareToIgnoreCase(second.getKey());
         });
-        return new NameHider.HideAllCache(visibleNamesByKey, aliasNumbers, replacements);
+        return new AccountHider.HideAllCache(visibleNamesByKey, aliasNumbers, replacements);
     }
 
     private static void collectTargetsFromTab(Map<String, LinkedHashSet<String>> targets, Set<String> protectedNames) {
@@ -335,6 +395,11 @@ public class NameHider extends Module {
         }
 
         return aliasNumbers;
+    }
+
+    /** Every name the local player has shown up as this session (account name, tab profile name / nick). */
+    public static List<String> getSelfNames() {
+        return mc.player == null ? Collections.emptyList() : buildSelfNames();
     }
 
     private static List<String> buildSelfNames() {
@@ -538,11 +603,13 @@ public class NameHider extends Module {
     @Override
     public void guiUpdate() {
         hideAllPrefixSetting.setVisible(hideAllNames.isToggled(), this);
+        skin.setVisible(customSkin.isToggled(), this);
+        arms.setVisible(customSkin.isToggled(), this);
     }
 
     private static final class HideAllCache {
-        private static final NameHider.HideAllCache EMPTY =
-                new NameHider.HideAllCache(Collections.emptyMap(), Collections.emptyMap(), Collections.emptyList());
+        private static final AccountHider.HideAllCache EMPTY =
+                new AccountHider.HideAllCache(Collections.emptyMap(), Collections.emptyMap(), Collections.emptyList());
         private final Map<String, List<String>> visibleNamesByKey;
         private final Map<String, Integer> aliasNumbers;
         private final List<Entry<String, String>> replacements;

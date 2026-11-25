@@ -11,14 +11,10 @@ import keystrokesmod.helper.DebugHelper;
 import keystrokesmod.helper.MouseHelper;
 import keystrokesmod.helper.PingHelper;
 import keystrokesmod.helper.RotationHelper;
-import keystrokesmod.keystroke.KeyStrokeCommand;
-import keystrokesmod.keystroke.KeyStrokeConfigGui;
-import keystrokesmod.keystroke.KeyStrokeRenderer;
 import keystrokesmod.lag.handler.UnifiedLagHandler;
 import keystrokesmod.module.Module;
 import keystrokesmod.module.ModuleManager;
 import keystrokesmod.module.setting.impl.SliderSetting;
-import keystrokesmod.platform.ClientPlatform;
 import keystrokesmod.platform.ornithe.ForgeEvents;
 import keystrokesmod.script.ScriptDefaults;
 import keystrokesmod.script.ScriptManager;
@@ -39,8 +35,6 @@ public class Feral {
     public static boolean DEBUG = false;
     public static final String VERSION = "1.0.0";
     public static Minecraft mc = Minecraft.getInstance();
-    private static KeyStrokeRenderer keyStrokeRenderer;
-    private static boolean isKeyStrokeConfigGuiToggled;
     private static final ScheduledExecutorService scheduledExecutor = Executors.newScheduledThreadPool(2);
     private static final ExecutorService cachedExecutor = Executors.newCachedThreadPool();
     public static ModuleManager moduleManager;
@@ -61,12 +55,11 @@ public class Feral {
     public void initialize() {
         Runtime.getRuntime().addShutdownHook(new Thread(scheduledExecutor::shutdown));
         Runtime.getRuntime().addShutdownHook(new Thread(cachedExecutor::shutdown));
-        ClientPlatform.ClientCommandHandler.instance.registerCommand(new KeyStrokeCommand());
         ForgeEvents.MinecraftForge.EVENT_BUS.register(this);
         ForgeEvents.MinecraftForge.EVENT_BUS.register(new DebugHelper());
         ForgeEvents.MinecraftForge.EVENT_BUS.register(new MouseHelper());
         ForgeEvents.MinecraftForge.EVENT_BUS.register(RotationHelper.get());
-        ForgeEvents.MinecraftForge.EVENT_BUS.register(new KeyStrokeRenderer());
+        ForgeEvents.MinecraftForge.EVENT_BUS.register(new keystrokesmod.helper.KeyInputTracker());
         ForgeEvents.MinecraftForge.EVENT_BUS.register(new PingHelper());
         ForgeEvents.MinecraftForge.EVENT_BUS.register(packetsHandler = new PacketsHandler());
         ForgeEvents.MinecraftForge.EVENT_BUS.register(new ModuleUtils());
@@ -75,9 +68,10 @@ public class Feral {
         playerRelationsManager = new PlayerRelationsManager();
         playerRelationsManager.load();
         moduleManager.register();
+        keystrokesmod.helper.zombies.ZombiesGameHelper.init();
         ForgeEvents.MinecraftForge.EVENT_BUS.register(new BlockHighlightSharedHandler());
+        ForgeEvents.MinecraftForge.EVENT_BUS.register(new keystrokesmod.clickgui.BigCatEvents());
         scriptManager = new ScriptManager();
-        keyStrokeRenderer = new KeyStrokeRenderer();
         clickGui = new ClickGui();
         profileManager = new ProfileManager();
         ScriptDefaults.reloadModules();
@@ -147,10 +141,6 @@ public class Feral {
                 }
             }
 
-            if (isKeyStrokeConfigGuiToggled) {
-                isKeyStrokeConfigGuiToggled = false;
-                mc.openScreen(new KeyStrokeConfigGui());
-            }
         } else {
             MouseHelper.clearWheelCache();
             if (mc.screen == null && Utils.nullCheck()) {
@@ -206,14 +196,6 @@ public class Feral {
         return cachedExecutor;
     }
 
-    public static KeyStrokeRenderer getKeyStrokeRenderer() {
-        return keyStrokeRenderer;
-    }
-
-    public static void toggleKeyStrokeConfigGui() {
-        isKeyStrokeConfigGuiToggled = true;
-    }
-
     public static void handleFrozenKeybinds() {
         if (Utils.nullCheck()) {
             MouseHelper.updateWheelCache();
@@ -244,11 +226,6 @@ public class Feral {
                 for (Module module : scriptManager.scripts.values()) {
                     module.syncKeyBindState();
                 }
-            }
-
-            if (isKeyStrokeConfigGuiToggled) {
-                isKeyStrokeConfigGuiToggled = false;
-                mc.openScreen(new KeyStrokeConfigGui());
             }
         }
     }

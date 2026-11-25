@@ -42,6 +42,20 @@ public class MixinGuiContainer {
         }
     }
 
+    @Inject(
+            method = "keyPressed",
+            at =
+                    @At(
+                            value = "INVOKE",
+                            target = "Lnet/minecraft/client/entity/living/player/LocalClientPlayerEntity;closeMenu()V"),
+            cancellable = true)
+    private void feral$keepInventoryOnKey(char typedChar, int keyCode, CallbackInfo ci) {
+        if (ModuleManager.keepInventory != null
+                && ModuleManager.keepInventory.handleCloseKey((InventoryMenuScreen) (Object) this, keyCode)) {
+            ci.cancel();
+        }
+    }
+
     private static boolean shouldCancelManualInventoryInput() {
         return ModuleManager.inventory != null && ModuleManager.inventory.shouldCancelManualInventoryInput();
     }

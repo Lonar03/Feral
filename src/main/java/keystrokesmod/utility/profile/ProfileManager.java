@@ -310,6 +310,8 @@ public class ProfileManager implements IMinecraftInstance {
         } else if (module instanceof TargetHUD) {
             moduleInformation.addProperty("posX", ModuleManager.targetHUD.posX);
             moduleInformation.addProperty("posY", ModuleManager.targetHUD.posY);
+        } else if (module instanceof keystrokesmod.module.impl.client.Keystrokes) {
+            ((keystrokesmod.module.impl.client.Keystrokes) module).saveProfileData(moduleInformation);
         } else if (module instanceof PotionHUD) {
             PotionHUD potionHUD = (PotionHUD) module;
             moduleInformation.addProperty("posX", potionHUD.getPosX());
@@ -456,6 +458,9 @@ public class ProfileManager implements IMinecraftInstance {
             JsonObject moduleInformation = moduleJson.getAsJsonObject();
             String moduleName = moduleInformation.get("name").getAsString();
             if (moduleName != null && !moduleName.isEmpty()) {
+                // Renamed modules/settings in profiles from MeowerClient and older Raven bS
+                moduleName = RavenProfileCompat.apply(moduleName, moduleInformation);
+
                 Module module = ModuleManager.getModule(moduleName);
                 if (module == null && moduleName.startsWith("sc-") && Feral.scriptManager != null) {
                     for (Module module1 : Feral.scriptManager.scripts.values()) {
@@ -496,6 +501,8 @@ public class ProfileManager implements IMinecraftInstance {
                 }
             }
         }
+
+        RavenProfileCompat.moveGuiArraylist(loadedModuleData);
 
         if (!loadedRelationshipsState && ModuleManager.relationships != null && Feral.playerRelationsManager != null) {
             ProfileManager.RequestedModuleState relationshipsState =
@@ -549,6 +556,8 @@ public class ProfileManager implements IMinecraftInstance {
                     int posY = moduleInformation.get("posY").getAsInt();
                     ModuleManager.targetHUD.posY = posY;
                 }
+            } else if (module instanceof keystrokesmod.module.impl.client.Keystrokes) {
+                ((keystrokesmod.module.impl.client.Keystrokes) module).loadProfileData(moduleInformation);
             } else if (module.getName().equals("Potion HUD")) {
                 PotionHUD potionHUD = (PotionHUD) module;
                 if (moduleInformation.has("relPosX") && moduleInformation.has("relPosY")) {

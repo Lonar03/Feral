@@ -659,6 +659,9 @@ public class CategoryComponent {
             case scripts:
                 itemStack = new ItemStack(Items.REDSTONE);
                 break;
+            case zombies:
+                itemStack = new ItemStack(Items.SKULL, 1, 2); // zombie head
+                break;
             default:
                 return null;
         }

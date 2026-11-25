@@ -25,7 +25,9 @@ public class Help extends Command {
         this.reply(" &b" + prefix + "rotate [yaw] [pitch] &7Set rotations.");
         this.reply(" &b" + prefix + "prefix [char] &7Change the chat command prefix.");
         this.replyTagged(input, "&7Commands - &dModules");
-        this.reply(" &b" + prefix + "namehider [name] &7Set name hider name.");
+        this.reply(" &b" + prefix + "accounthider [name] &7Set account hider name.");
+        this.reply(" &b" + prefix + "autogg/autogl [add/remove/list] &7Edit AutoGG messages.");
+        this.reply(" &b" + prefix + "nickbot [start/stop/add/remove/list] &7Run NickBot.");
         this.reply(" &b" + prefix + "binds (key) &7List module binds.");
         this.reply(" &b" + prefix + "bind/b [module] [key] &7Bind a module.");
         this.reply(" &b" + prefix + "find [module] &7Find a module in GUI.");

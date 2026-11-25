@@ -112,8 +112,12 @@ public class Clutch extends Module {
         this.autoClutchLandedGuard = false;
     }
 
-    @ForgeEvents.SubscribeEvent
+    // Lower-flag rotation handling. runs last, sends GCD-fixed rotations as
+    // exact
+    // rotations, drops stale queued placements and re-raycasts with the server rotation before placing.
+    @ForgeEvents.SubscribeEvent(priority = ForgeEvents.EventPriority.LOWEST)
     public void onClientRotation(ClientRotationEvent e) {
+        this.placeQueued = false;
         if (Utils.nullCheck()) {
             if (ModuleManager.bedAura == null || !ModuleManager.bedAura.shouldOverrideMouseOver()) {
                 this.runPrePlayerInteract();
@@ -138,6 +142,11 @@ public class Clutch extends Module {
                     }
                 } else if (this.hasAim) {
                     float[] smoothed = this.getRotationsSmoothed(baseYaw, basePitch, this.aimYaw, this.aimPitch, false);
+                    smoothed = RotationUtils.fixRotation(
+                            smoothed[0],
+                            smoothed[1],
+                            RotationUtils.serverRotations[0],
+                            RotationUtils.serverRotations[1]);
                     if (this.placing && this.targetHitPos != null) {
                         HitResult mop = RotationUtils.rayCastBlock(this.reach.getInput(), smoothed[0], smoothed[1]);
                         if (mop != null && this.targetHitPos.equals(mop.getPos()) && this.targetSide == mop.face) {
@@ -157,8 +166,7 @@ public class Clutch extends Module {
                     }
 
                     RotationHelper.get().forceMovementFix = true;
-                    e.setYaw(smoothed[0]);
-                    e.setPitch(smoothed[1]);
+                    e.claimExactRotations(smoothed[0], smoothed[1], false);
                 }
             }
         }
@@ -169,6 +177,18 @@ public class Clutch extends Module {
         if (Utils.nullCheck() && this.placeQueued) {
             this.placeQueued = false;
             if (this.canClutchHere()) {
+                Float yaw = RotationHelper.get().getServerYaw();
+                Float pitch = RotationHelper.get().getServerPitch();
+                if (yaw == null || pitch == null) {
+                    return;
+                }
+
+                HitResult mop = RotationUtils.rayCastBlock(this.reach.getInput(), yaw, pitch);
+                if (mop == null || !mop.getPos().equals(this.placeAtBlock) || mop.face != this.hitSide) {
+                    return;
+                }
+
+                this.hitVec = mop.facePos;
                 if (this.placeAtBlock != null
                         && this.hitSide != null
                         && this.hitVec != null
@@ -548,15 +568,16 @@ public class Clutch extends Module {
         candidates.sort((a, b) -> Double.compare(a.cost, b.cost));
 
         for (Clutch.RotationCandidate candidate : candidates) {
-            float yaw = unwrapYaw(candidate.yaw, RotationUtils.serverRotations[0]);
-            HitResult ray = RotationUtils.rayCastBlock(reachVal, yaw, candidate.pitch);
+            float[] rotations = RotationUtils.fixRotation(
+                    candidate.yaw, candidate.pitch, RotationUtils.serverRotations[0], RotationUtils.serverRotations[1]);
+            HitResult ray = RotationUtils.rayCastBlock(reachVal, rotations[0], rotations[1]);
             if (ray != null) {
                 Direction face = ray.face;
                 if (face != Direction.DOWN
                         && (face != Direction.UP || underPlayer)
                         && targetCell.equals(ray.getPos())
                         && BlockUtils.canPlaceBlockOnSide(held, ray.getPos(), face)) {
-                    return new Clutch.AimResult(ray, yaw, candidate.pitch);
+                    return new Clutch.AimResult(ray, rotations[0], rotations[1]);
                 }
             }
         }

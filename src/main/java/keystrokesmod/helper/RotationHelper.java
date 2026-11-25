@@ -379,6 +379,9 @@ public class RotationHelper {
             float inputScale = Math.max(Math.abs(forward), Math.abs(strafe));
             if (forward != 0.0F || strafe != 0.0F) {
                 double angle = Math.toDegrees(getDirection(this.mc.player.yaw, forward, strafe));
+                if (ModuleManager.scaffoldAdjust != null && ModuleManager.scaffoldAdjust.isEnabled()) {
+                    angle = ModuleManager.scaffoldAdjust.optimizeMoveDirection(angle);
+                }
                 float closestForward = 0.0F;
                 float closestStrafe = 0.0F;
                 float closestDifference = Float.MAX_VALUE;

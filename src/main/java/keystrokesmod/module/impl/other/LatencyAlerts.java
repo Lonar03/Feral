@@ -8,6 +8,7 @@ import keystrokesmod.module.Module;
 import keystrokesmod.module.setting.impl.ButtonSetting;
 import keystrokesmod.module.setting.impl.DescriptionSetting;
 import keystrokesmod.module.setting.impl.SliderSetting;
+import keystrokesmod.platform.ClientPlatform;
 import keystrokesmod.platform.ornithe.ForgeEvents;
 import keystrokesmod.utility.Utils;
 import net.minecraft.network.packet.Packet;
@@ -57,11 +58,10 @@ public class LatencyAlerts extends Module {
             if (currentMs - this.lastPacketTime >= this.highLatency.getInput() * 1000.0
                     && currentMs - this.lastAlert >= this.interval.getInput() * 1000.0) {
                 String msSinceLastPacket = String.valueOf(Math.abs(System.currentTimeMillis() - this.lastPacketTime));
-                LiteralText component = new LiteralText(Utils.formatColor("&7[&dR&7]&r &7Packet loss detected: "));
+                LiteralText component = new LiteralText(Utils.formatColor("&7[&dF&7]&r &7Packet loss detected: "));
                 Style style = new Style();
-                String packetName = this.lastPacket == null
-                        ? "Unknown"
-                        : this.lastPacket.getClass().getSimpleName();
+                String packetName =
+                        this.lastPacket == null ? "Unknown" : ClientPlatform.className(this.lastPacket.getClass());
                 String contents = "&7Last packet: &b" + packetName;
                 String timeString = new SimpleDateFormat("h:mm:ss a").format(new Date(this.lastPacketTime));
                 contents = contents + "\n&7Received at: &b" + timeString;

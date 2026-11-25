@@ -410,7 +410,7 @@ public class Utils implements IMinecraftInstance {
     private static void sendEntityDebugLine(StringBuilder report, String label, Object value) {
         String text = formatEntityDebugValue(value).replace("§", "\\u00a7");
         report.append(label).append(": ").append(text).append('\n');
-        mc.player.sendMessage(new LiteralText("§7[§dR§7] " + label + ": §b" + text));
+        mc.player.sendMessage(new LiteralText("§7[§dF§7] " + label + ": §b" + text));
     }
 
     private static String formatEntityDebugValue(Object value) {
@@ -837,14 +837,14 @@ public class Utils implements IMinecraftInstance {
 
     public static void sendMessage(String txt) {
         if (nullCheck()) {
-            String m = formatColor("&7[&dR&7]&r " + txt);
+            String m = formatColor("&7[&dF&7]&r " + txt);
             mc.player.sendMessage(new LiteralText(m));
         }
     }
 
     public static void sendMessageStr(String txt) {
         if (nullCheck()) {
-            String m = formatColor("&7[&dR&7]&r " + txt);
+            String m = formatColor("&7[&dF&7]&r " + txt);
             mc.player.sendMessage(new LiteralText(m));
         }
     }
@@ -856,7 +856,7 @@ public class Utils implements IMinecraftInstance {
 
     public static void sendDebugMessage(String message) {
         if (nullCheck()) {
-            mc.player.sendMessage(new LiteralText("§7[§dR§7]§r " + message));
+            mc.player.sendMessage(new LiteralText("§7[§dF§7]§r " + message));
         }
     }
 
@@ -2150,5 +2150,51 @@ public class Utils implements IMinecraftInstance {
         } else {
             return null;
         }
+    }
+
+    /** Mode names for a {@link SliderSetting} made from an enum. */
+    public static <E extends Enum<E>> String[] enumNames(Class<E> enumClass) {
+        E[] constants = enumClass.getEnumConstants();
+        String[] names = new String[constants.length];
+        for (int i = 0; i < constants.length; i++) {
+            names[i] = constants[i].name();
+        }
+        return names;
+    }
+
+    /** The enum constant currently selected in a mode {@link SliderSetting} built with {@link #enumNames}. */
+    public static <E extends Enum<E>> E enumOption(Class<E> enumClass, SliderSetting setting) {
+        E[] constants = enumClass.getEnumConstants();
+        int index = (int) Math.max(0, Math.min(constants.length - 1, Math.round(setting.getInput())));
+        return constants[index];
+    }
+
+    /** Opens a folder in the system file manager (creates it first). */
+    public static boolean openFolder(java.io.File folder) {
+        folder.mkdirs();
+        String path = folder.getAbsolutePath();
+        String os = System.getProperty("os.name", "").toLowerCase();
+        try {
+            if (os.contains("mac")) {
+                Runtime.getRuntime().exec(new String[] {"/usr/bin/open", path});
+                return true;
+            } else if (os.contains("win")) {
+                Runtime.getRuntime().exec(new String[] {"cmd.exe", "/C", "start", "\"Open folder\"", path});
+                return true;
+            } else if (os.contains("nux") || os.contains("nix")) {
+                Runtime.getRuntime().exec(new String[] {"xdg-open", path});
+                return true;
+            }
+        } catch (Exception ignored) {
+        }
+
+        try {
+            if (java.awt.Desktop.isDesktopSupported()) {
+                java.awt.Desktop.getDesktop().open(folder);
+                return true;
+            }
+        } catch (Exception ignored) {
+        }
+        return false;
     }
 }

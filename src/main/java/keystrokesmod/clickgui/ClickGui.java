@@ -148,6 +148,14 @@ public class ClickGui extends Screen {
             this.refreshLayoutForConfiguredScale();
         }
 
+        if (Gui.isBigCatStyle()) {
+            // Switched to the big cat (or opened some other way while it's selected): show the window instead.
+            this.minecraft.openScreen(null);
+            this.reloadModulesForCurrentMode();
+            BigCatGui.INSTANCE.requestOpen();
+            return;
+        }
+
         int logicalMouseX = this.toLogicalCoordinate(x);
         int logicalMouseY = this.toLogicalCoordinate(y);
         int backgroundAlpha = (int) (this.backgroundFade.getValueFloat(0.0F, 0.75F, 2) * 255.0F);

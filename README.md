@@ -21,3 +21,9 @@ Feral is built on top of **Raven bS**. The base code, modules, the click GUI and
 
 - [Raven bS](https://codeberg.org/strangerrrrs/raven-bS) by Strangerrrs and The_Frontman, MIT licensed (see `LICENSE_raven-bs`)
 - [Raven scripting documentation](https://blowsy.gitbook.io/raven) for the scripting API
+- Meower (Lonar03), the Zombies modules, Big Cat GUI and other features ported from it
+- ZombieCat / YogurtAddon by hendencee, the Hypixel Zombies features (spawn times, powerup prediction, Aimbot, Quick Switch, No Reload and more)
+- [Adjust](https://github.com/yxzeroo/openadjust) (openadjust, rebuilt source by yxzeroo), the Zombies boss wave table, Scaffold (Adjust), Auto Block (Adjust), Head Hitter and Bed Defense
+- Meowtils by tatp, AutoGG/AutoGL, AutoChannel, AntiInvis, NickBot and Account Hider's custom skin (via Meower, ported and modified; Meowtils' license allows using a limited set of its code with credit)
+- Sk1er LLC's Keystrokes mod (Fyu, boomboompower, Sk1er), the layout, custom keys and config format of the Keystrokes module
+- Crafty Girls (Apache 2.0), the default font (see `assets/keystrokesmod/fonts/`)

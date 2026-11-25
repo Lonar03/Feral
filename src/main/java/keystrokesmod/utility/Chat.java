@@ -7,7 +7,7 @@ import net.minecraft.text.LiteralText;
 public final class Chat {
     private static final Minecraft mc = Minecraft.getInstance();
     public static final String COLOR = "§";
-    public static final String PREFIX = "&7[&dR&7]&r ";
+    public static final String PREFIX = "&7[&dF&7]&r ";
     public static final char SECTION = '§';
 
     private Chat() {}
@@ -44,7 +44,7 @@ public final class Chat {
 
     public static void print(String s) {
         if (inWorld()) {
-            mc.player.sendMessage(new LiteralText(color("&7[&dR&7]&r " + s)));
+            mc.player.sendMessage(new LiteralText(color("&7[&dF&7]&r " + s)));
         }
     }
 

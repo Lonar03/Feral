@@ -1,7 +1,7 @@
 package keystrokesmod.mixin.impl.render;
 
 import keystrokesmod.module.ModuleManager;
-import keystrokesmod.module.impl.other.NameHider;
+import keystrokesmod.module.impl.other.AccountHider;
 import keystrokesmod.platform.ornithe.ForgeEvents;
 import net.minecraft.client.gui.overlay.PlayerTabOverlay;
 import net.minecraft.client.network.PlayerInfo;
@@ -15,8 +15,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public class MixinGuiPlayerTabOverlay {
     @Inject(method = "getDisplayName", at = @At("RETURN"), cancellable = true)
     private void nameHider$hideTabName(PlayerInfo networkPlayerInfoIn, CallbackInfoReturnable<String> cir) {
-        if (ModuleManager.nameHider != null && ModuleManager.nameHider.isEnabled()) {
-            cir.setReturnValue(NameHider.getTabName(networkPlayerInfoIn, (String) cir.getReturnValue()));
+        if (ModuleManager.accountHider != null && ModuleManager.accountHider.isEnabled()) {
+            cir.setReturnValue(AccountHider.getTabName(networkPlayerInfoIn, (String) cir.getReturnValue()));
         }
     }
 }

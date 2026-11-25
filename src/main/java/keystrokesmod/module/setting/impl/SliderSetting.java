@@ -255,6 +255,11 @@ public class SliderSetting extends Setting {
                 return true;
             }
 
+            if ("MeowClient-Regular".equals(option)) {
+                // Meower's name for the bundled Crafty Girls font, still in profiles copied from Meower
+                option = "Crafty Girls";
+            }
+
             for (int i = 0; i < this.options.length; i++) {
                 if (option.equals(this.options[i])) {
                     this.setValue(i);

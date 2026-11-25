@@ -714,6 +714,19 @@ public class RenderUtils implements IMinecraftInstance {
 
     public static void renderEntity(
             Entity e, int type, double expand, double shift, int color, boolean damage, float fillAlpha) {
+        renderEntity(e, type, expand, shift, color, damage, fillAlpha, 2.0F);
+    }
+
+    /** @param lineWidth box outline width (MobESP's Box thickness). */
+    public static void renderEntity(
+            Entity e,
+            int type,
+            double expand,
+            double shift,
+            int color,
+            boolean damage,
+            float fillAlpha,
+            float lineWidth) {
         if (e instanceof LivingEntity) {
             float partialTicks = ((IAccessorMinecraft) mc).getTimer().partialTick;
             double x = e.prevX + (e.x - e.prevX) * partialTicks - mc.getEntityRenderDispatcher().cameraX;
@@ -792,7 +805,7 @@ public class RenderUtils implements IMinecraftInstance {
                 GL11.glDisable(3553);
                 GL11.glDisable(2929);
                 GL11.glDepthMask(false);
-                GL11.glLineWidth(2.0F);
+                GL11.glLineWidth(lineWidth);
                 GL11.glColor4f(r, g, b, a);
                 if (type == 1) {
                     WorldRenderer.renderOutlineShape(axis);

@@ -1,8 +1,8 @@
 package keystrokesmod.mixin.impl.render;
 
 import keystrokesmod.module.ModuleManager;
-import keystrokesmod.module.impl.other.NameHider;
-import keystrokesmod.module.impl.render.AntiShuffle;
+import keystrokesmod.module.impl.other.AccountHider;
+import keystrokesmod.module.impl.other.Unscramble;
 import keystrokesmod.platform.ornithe.ForgeEvents;
 import net.minecraft.client.render.TextRenderer;
 import org.spongepowered.asm.mixin.Mixin;
@@ -27,12 +27,12 @@ public class MixinFontRenderer {
             string = ModuleManager.bedwars.filterScoreboardLine(string);
         }
 
-        if (ModuleManager.nameHider != null && ModuleManager.nameHider.isEnabled()) {
-            string = NameHider.getFakeName(string);
+        if (ModuleManager.accountHider != null && ModuleManager.accountHider.isEnabled()) {
+            string = AccountHider.getFakeName(string);
         }
 
-        if (ModuleManager.antiShuffle != null && ModuleManager.antiShuffle.isEnabled()) {
-            string = AntiShuffle.removeObfuscation(string);
+        if (ModuleManager.unscramble != null && ModuleManager.unscramble.isEnabled()) {
+            string = Unscramble.removeObfuscation(string);
         }
 
         return string;
@@ -53,12 +53,12 @@ public class MixinFontRenderer {
             string = ModuleManager.bedwars.filterScoreboardLine(string);
         }
 
-        if (ModuleManager.nameHider != null && ModuleManager.nameHider.isEnabled()) {
-            string = NameHider.getFakeName(string);
+        if (ModuleManager.accountHider != null && ModuleManager.accountHider.isEnabled()) {
+            string = AccountHider.getFakeName(string);
         }
 
-        if (ModuleManager.antiShuffle != null && ModuleManager.antiShuffle.isEnabled()) {
-            string = AntiShuffle.removeObfuscation(string);
+        if (ModuleManager.unscramble != null && ModuleManager.unscramble.isEnabled()) {
+            string = Unscramble.removeObfuscation(string);
         }
 
         return string;

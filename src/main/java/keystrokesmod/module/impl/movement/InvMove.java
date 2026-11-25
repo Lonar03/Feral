@@ -8,6 +8,7 @@ import keystrokesmod.event.PreMovementPacketEvent;
 import keystrokesmod.event.PrePlayerInputEvent;
 import keystrokesmod.event.PreUpdateEvent;
 import keystrokesmod.event.SendPacketEvent;
+import keystrokesmod.mixin.impl.accessor.IAccessorKeyBinding;
 import keystrokesmod.module.Module;
 import keystrokesmod.module.ModuleManager;
 import keystrokesmod.module.impl.client.Settings;
@@ -480,7 +481,7 @@ public class InvMove extends Module {
         KeyBinding.set(mc.options.sneakKey.getKeyCode(), sneak);
         boolean sprint = (mc.screen == null || !applyAllowSettings || this.allowSprinting.isToggled() && !sneak)
                 && Utils.isBindDown(mc.options.sprintKey);
-        KeyBinding.set(mc.options.sprintKey.getKeyCode(), sprint);
+        ((IAccessorKeyBinding) mc.options.sprintKey).setPressed(sprint);
     }
 
     private void releaseMovementKeys() {
@@ -490,7 +491,7 @@ public class InvMove extends Module {
         KeyBinding.set(mc.options.leftKey.getKeyCode(), false);
         KeyBinding.set(mc.options.jumpKey.getKeyCode(), false);
         KeyBinding.set(mc.options.sneakKey.getKeyCode(), false);
-        KeyBinding.set(mc.options.sprintKey.getKeyCode(), false);
+        ((IAccessorKeyBinding) mc.options.sprintKey).setPressed(false);
         if (mc.player != null && mc.player.input != null) {
             mc.player.input.movementForward = 0.0F;
             mc.player.input.movementSideways = 0.0F;
@@ -507,7 +508,7 @@ public class InvMove extends Module {
         KeyBinding.set(mc.options.leftKey.getKeyCode(), Utils.isBindDown(mc.options.leftKey));
         KeyBinding.set(mc.options.jumpKey.getKeyCode(), Utils.jumpDown());
         KeyBinding.set(mc.options.sneakKey.getKeyCode(), false);
-        KeyBinding.set(mc.options.sprintKey.getKeyCode(), false);
+        ((IAccessorKeyBinding) mc.options.sprintKey).setPressed(false);
         if (mc.player != null && mc.player.input != null) {
             mc.player.input.sneaking = false;
             mc.player.setSprinting(false);

@@ -4,6 +4,13 @@ import net.minecraft.client.Minecraft;
 import org.lwjgl.opengl.GL20;
 
 public class OutlineShader extends OutlineESPShader {
+    /** Outline width in pixels (MobESP's Outline thickness). */
+    private float kernel = 2.0F;
+
+    public void setKernel(float kernel) {
+        this.kernel = Math.max(1.0F, kernel);
+    }
+
     private static final String FRAG =
             "#version 120\nuniform sampler2D tex;\nuniform vec2 texelSize;\nuniform float kernel;\nvoid main() {\n  vec4 c = texture2D(tex, gl_TexCoord[0].xy);\n  if (c.a > 0.0) { gl_FragColor = vec4(0.0); return; }\n  gl_FragColor = vec4(0.0);\n  for (float dx = -kernel; dx <= kernel; dx += 1.0)\n    for (float dy = -kernel; dy <= kernel; dy += 1.0) {\n      vec4 n = texture2D(tex, gl_TexCoord[0].xy + vec2(dx, dy) * texelSize);\n      if (n.a > 0.0) gl_FragColor = n;\n    }\n}";
 
@@ -35,7 +42,7 @@ public class OutlineShader extends OutlineESPShader {
 
         u = this.uniform("kernel");
         if (u >= 0) {
-            GL20.glUniform1f(u, 2.0F);
+            GL20.glUniform1f(u, this.kernel);
         }
     }
 }

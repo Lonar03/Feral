@@ -31,6 +31,9 @@ public class FastPlace extends Module {
     public SliderSetting tickDelay;
     public SliderSetting activationTime;
     public ButtonSetting blocksOnly;
+    public ButtonSetting gunException;
+    public ButtonSetting perkException;
+    public ItemListSetting perkItems;
     public ButtonSetting pitchCheck;
     public ButtonSetting showBlockCount;
     public ButtonSetting editPosition;
@@ -53,6 +56,17 @@ public class FastPlace extends Module {
         this.registerSetting(this.tickDelay = new SliderSetting("Delay", " tick", 1.0, 0.0, 3.0, 1.0));
         this.registerSetting(this.activationTime = new SliderSetting("Minimum hold time", "ms", 0.0, 0.0, 100.0, 5.0));
         this.registerSetting(this.blocksOnly = new ButtonSetting("Blocks only", true));
+        // Zombies guns and perk items
+        this.registerSetting(this.gunException = new ButtonSetting("Gun exception", false));
+        this.registerSetting(this.perkException = new ButtonSetting("Perk exception", false));
+        this.perkItems = new ItemListSetting("Perk items");
+        // Zombies perk/consumable items: redstone dust, blaze powder, gray dye, gold nugget, sugar.
+        this.perkItems.addItem("minecraft:redstone");
+        this.perkItems.addItem("minecraft:blaze_powder");
+        this.perkItems.addItem("minecraft:dye:8");
+        this.perkItems.addItem("minecraft:gold_nugget");
+        this.perkItems.addItem("minecraft:sugar");
+        this.registerSetting(this.perkItems);
         this.registerSetting(this.pitchCheck = new ButtonSetting("Pitch check", false));
         this.registerSetting(this.showBlockCount = new ButtonSetting("Show block count", false));
         this.registerSetting(
@@ -85,6 +99,10 @@ public class FastPlace extends Module {
     @Override
     public void guiUpdate() {
         this.editPosition.setVisible(this.showBlockCount.isToggled(), this);
+        this.gunException.setVisible(this.blocksOnly.isToggled(), this);
+        boolean perkOptions = this.blocksOnly.isToggled() && this.gunException.isToggled();
+        this.perkException.setVisible(perkOptions, this);
+        this.perkItems.setVisible(perkOptions && this.perkException.isToggled(), this);
         this.ignoredHeldItems.setVisible(this.ignoredHeldItemsToggle.isToggled(), this);
         this.blockBlacklist.setVisible(this.blockBlacklistToggle.isToggled(), this);
     }
@@ -333,10 +351,24 @@ public class FastPlace extends Module {
         return Utils.isBindDown(mc.options.useKey) || mc.player.hasItemInUse();
     }
 
+    /** Zombies guns are non-sword tools: pickaxes, axes, shovels, hoes, shears, flint and steel, plus dyes. */
+    private static boolean isGun(ItemStack stack) {
+        net.minecraft.item.Item item = stack.getItem();
+        return item instanceof net.minecraft.item.ToolItem
+                || item instanceof net.minecraft.item.HoeItem
+                || item instanceof net.minecraft.item.ShearsItem
+                || item instanceof net.minecraft.item.FlintAndSteelItem
+                || item instanceof net.minecraft.item.DyeItem;
+    }
+
     private boolean canFastPlace(long now, boolean requireActivationDelay) {
         if (this.blocksOnly.isToggled()) {
             ItemStack item = mc.player.getDisplayItemInHand();
-            if (item == null || !(item.getItem() instanceof BlockItem)) {
+            boolean allowed = item != null
+                    && (item.getItem() instanceof BlockItem
+                            || this.gunException.isToggled()
+                                    && (isGun(item) || this.perkException.isToggled() && this.perkItems.matches(item)));
+            if (!allowed) {
                 return false;
             }
         }
