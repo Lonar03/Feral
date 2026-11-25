@@ -1,0 +1,27 @@
+{
+  "required": true,
+  "package": "keystrokesmod.mixin.impl",
+  "compatibilityLevel": "JAVA_8",
+  "mixins": [
+    "ornithe.OrnitheClientHooks$Client",
+    "ornithe.OrnitheClientHooks$ClientWorld",
+    "ornithe.OrnitheClientHooks$Spawn",
+    "ornithe.OrnitheClientHooks$Renderer",
+    "ornithe.OrnitheClientHooks$Screen",
+    "ornithe.OrnitheClientHooks$ChatPacket",
+    "ornithe.OrnitheClientHooks$Chat",
+    "ornithe.OrnitheClientHooks$Lightmap",
+    "ornithe.OrnitheEntityHooks$Living",
+    "ornithe.OrnitheEntityHooks$AttackTarget",
+    "ornithe.OrnitheEntityHooks$Player",
+    "ornithe.MixinOrnithePlayerAttack",
+    "ornithe.MixinOrnitheCamera",
+    "ornithe.MixinOrnitheCamera$WorldRenderer",
+    "ornithe.MixinOrnitheCamera$ActiveRenderInfo",
+    "ornithe.OrnitheEntityHooks$LivingRenderer",
+    "ornithe.OrnitheEntityHooks$PlayerRenderer",
+    "ornithe.OrnitheArgentumHooks$EntityVisibility",
+    "ornithe.OrnitheArgentumHooks$EntityInstancing"
+  ],
+  "minVersion": "0.8"
+}

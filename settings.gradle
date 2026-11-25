@@ -1,0 +1,25 @@
+pluginManagement {
+	repositories {
+		maven {
+			name = 'Fabric'
+			url = 'https://maven.fabricmc.net/'
+		}
+		maven {
+			name = 'Ornithe Releases'
+			url = 'https://maven.ornithemc.net/releases'
+		}
+		maven {
+			name = 'Ornithe Snapshots'
+			url = 'https://maven.ornithemc.net/snapshots'
+		}
+		mavenLocal()
+		gradlePluginPortal()
+	}
+}
+
+plugins {
+	// Lets Gradle download a missing JDK (used for the Java 25 daemon and the Java 8 game runtime).
+	id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
+}
+
+rootProject.name = "feral"

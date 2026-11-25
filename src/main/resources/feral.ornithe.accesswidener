@@ -1,0 +1,8 @@
+accessWidener	v2	named
+accessible	field	net/minecraft/client/Minecraft	defaultResourcePack	Lnet/minecraft/client/resource/pack/BuiltInResourcePack;
+accessible	field	net/minecraft/client/gui/screen/game/inventory/InventoryMenuScreen	hoveredSlot	Lnet/minecraft/inventory/slot/InventorySlot;
+accessible	field	net/minecraft/entity/Entities	KEY_TO_TYPE	Ljava/util/Map;
+accessible	field	net/minecraft/entity/living/mob/MobEntity	goalSelector	Lnet/minecraft/entity/ai/goal/GoalSelector;
+accessible	field	net/minecraft/item/BlockItem	block	Lnet/minecraft/block/Block;
+accessible	field	net/minecraft/util/math/Direction	ALL	[Lnet/minecraft/util/math/Direction;
+accessible	field	net/minecraft/util/math/Direction	BY_ID_HORIZONTAL	[Lnet/minecraft/util/math/Direction;

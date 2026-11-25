@@ -1,0 +1,118 @@
+package keystrokesmod.script.packet;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+import keystrokesmod.script.packet.clientbound.S02;
+import keystrokesmod.script.packet.clientbound.S04;
+import keystrokesmod.script.packet.clientbound.S06;
+import keystrokesmod.script.packet.clientbound.S08;
+import keystrokesmod.script.packet.clientbound.S0B;
+import keystrokesmod.script.packet.clientbound.S12;
+import keystrokesmod.script.packet.clientbound.S14;
+import keystrokesmod.script.packet.clientbound.S23;
+import keystrokesmod.script.packet.clientbound.S25;
+import keystrokesmod.script.packet.clientbound.S27;
+import keystrokesmod.script.packet.clientbound.S29;
+import keystrokesmod.script.packet.clientbound.S2A;
+import keystrokesmod.script.packet.clientbound.S2F;
+import keystrokesmod.script.packet.clientbound.S3A;
+import keystrokesmod.script.packet.clientbound.S3E;
+import keystrokesmod.script.packet.clientbound.S45;
+import keystrokesmod.script.packet.clientbound.S48;
+import keystrokesmod.script.packet.clientbound.SPacket;
+import keystrokesmod.script.packet.serverbound.C01;
+import keystrokesmod.script.packet.serverbound.C02;
+import keystrokesmod.script.packet.serverbound.C03;
+import keystrokesmod.script.packet.serverbound.C07;
+import keystrokesmod.script.packet.serverbound.C08;
+import keystrokesmod.script.packet.serverbound.C09;
+import keystrokesmod.script.packet.serverbound.C0A;
+import keystrokesmod.script.packet.serverbound.C0B;
+import keystrokesmod.script.packet.serverbound.C0D;
+import keystrokesmod.script.packet.serverbound.C0E;
+import keystrokesmod.script.packet.serverbound.C0F;
+import keystrokesmod.script.packet.serverbound.C10;
+import keystrokesmod.script.packet.serverbound.C13;
+import keystrokesmod.script.packet.serverbound.C16;
+import keystrokesmod.script.packet.serverbound.CPacket;
+import net.minecraft.network.packet.Packet;
+import net.minecraft.network.packet.c2s.play.ArmSwingC2SPacket;
+import net.minecraft.network.packet.c2s.play.ChatMessageC2SPacket;
+import net.minecraft.network.packet.c2s.play.ClientStatusC2SPacket;
+import net.minecraft.network.packet.c2s.play.CloseInventoryMenuC2SPacket;
+import net.minecraft.network.packet.c2s.play.CreativeMenuSlotC2SPacket;
+import net.minecraft.network.packet.c2s.play.InventoryMenuClickSlotC2SPacket;
+import net.minecraft.network.packet.c2s.play.InventoryMenuConfirmC2SPacket;
+import net.minecraft.network.packet.c2s.play.PlayerAbilitiesC2SPacket;
+import net.minecraft.network.packet.c2s.play.PlayerHandActionC2SPacket;
+import net.minecraft.network.packet.c2s.play.PlayerInteractEntityC2SPacket;
+import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
+import net.minecraft.network.packet.c2s.play.PlayerMovementActionC2SPacket;
+import net.minecraft.network.packet.c2s.play.PlayerUseC2SPacket;
+import net.minecraft.network.packet.c2s.play.SelectSlotC2SPacket;
+import net.minecraft.network.packet.s2c.play.BlockMiningProgressS2CPacket;
+import net.minecraft.network.packet.s2c.play.BlockUpdateS2CPacket;
+import net.minecraft.network.packet.s2c.play.ChatMessageS2CPacket;
+import net.minecraft.network.packet.s2c.play.CommandSuggestionsS2CPacket;
+import net.minecraft.network.packet.s2c.play.EntityAnimationS2CPacket;
+import net.minecraft.network.packet.s2c.play.EntityEquipmentS2CPacket;
+import net.minecraft.network.packet.s2c.play.EntityMoveS2CPacket;
+import net.minecraft.network.packet.s2c.play.EntityVelocityS2CPacket;
+import net.minecraft.network.packet.s2c.play.ExplosionS2CPacket;
+import net.minecraft.network.packet.s2c.play.InventoryMenuSlotContentS2CPacket;
+import net.minecraft.network.packet.s2c.play.ParticleS2CPacket;
+import net.minecraft.network.packet.s2c.play.PlayerHealthS2CPacket;
+import net.minecraft.network.packet.s2c.play.PlayerMoveS2CPacket;
+import net.minecraft.network.packet.s2c.play.ResourcePackS2CPacket;
+import net.minecraft.network.packet.s2c.play.SoundEventS2CPacket;
+import net.minecraft.network.packet.s2c.play.TeamS2CPacket;
+import net.minecraft.network.packet.s2c.play.TitlesS2CPacket;
+
+public class PacketMappings {
+    public static final Map<Class<? extends Packet<?>>, Class<? extends CPacket>> minecraftToScriptC =
+            new LinkedHashMap<>();
+    public static final Map<Class<? extends Packet<?>>, Class<? extends SPacket>> minecraftToScriptS =
+            new LinkedHashMap<>();
+
+    static {
+        minecraftToScriptC.put(ArmSwingC2SPacket.class, C0A.class);
+        minecraftToScriptC.put(PlayerMovementActionC2SPacket.class, C0B.class);
+        minecraftToScriptC.put(ChatMessageC2SPacket.class, C01.class);
+        minecraftToScriptC.put(PlayerInteractEntityC2SPacket.class, C02.class);
+        minecraftToScriptC.put(InventoryMenuConfirmC2SPacket.class, C0F.class);
+        minecraftToScriptC.put(InventoryMenuClickSlotC2SPacket.class, C0E.class);
+        minecraftToScriptC.put(PlayerMoveC2SPacket.class, C03.class);
+        minecraftToScriptC.put(net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket.Position.class, C03.class);
+        minecraftToScriptC.put(net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket.Angles.class, C03.class);
+        minecraftToScriptC.put(
+                net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket.PositionAndAngles.class, C03.class);
+        minecraftToScriptC.put(PlayerHandActionC2SPacket.class, C07.class);
+        minecraftToScriptC.put(PlayerUseC2SPacket.class, C08.class);
+        minecraftToScriptC.put(SelectSlotC2SPacket.class, C09.class);
+        minecraftToScriptC.put(CreativeMenuSlotC2SPacket.class, C10.class);
+        minecraftToScriptC.put(PlayerAbilitiesC2SPacket.class, C13.class);
+        minecraftToScriptC.put(ClientStatusC2SPacket.class, C16.class);
+        minecraftToScriptC.put(CloseInventoryMenuC2SPacket.class, C0D.class);
+        minecraftToScriptS.put(EntityVelocityS2CPacket.class, S12.class);
+        minecraftToScriptS.put(ExplosionS2CPacket.class, S27.class);
+        minecraftToScriptS.put(TeamS2CPacket.class, S3E.class);
+        minecraftToScriptS.put(PlayerMoveS2CPacket.class, S08.class);
+        minecraftToScriptS.put(ParticleS2CPacket.class, S2A.class);
+        minecraftToScriptS.put(BlockMiningProgressS2CPacket.class, S25.class);
+        minecraftToScriptS.put(PlayerHealthS2CPacket.class, S06.class);
+        minecraftToScriptS.put(BlockUpdateS2CPacket.class, S23.class);
+        minecraftToScriptS.put(SoundEventS2CPacket.class, S29.class);
+        minecraftToScriptS.put(InventoryMenuSlotContentS2CPacket.class, S2F.class);
+        minecraftToScriptS.put(ResourcePackS2CPacket.class, S48.class);
+        minecraftToScriptS.put(CommandSuggestionsS2CPacket.class, S3A.class);
+        minecraftToScriptS.put(ChatMessageS2CPacket.class, S02.class);
+        minecraftToScriptS.put(TitlesS2CPacket.class, S45.class);
+        minecraftToScriptS.put(EntityAnimationS2CPacket.class, S0B.class);
+        minecraftToScriptS.put(EntityMoveS2CPacket.class, S14.class);
+        minecraftToScriptS.put(net.minecraft.network.packet.s2c.play.EntityMoveS2CPacket.Position.class, S14.class);
+        minecraftToScriptS.put(net.minecraft.network.packet.s2c.play.EntityMoveS2CPacket.Angles.class, S14.class);
+        minecraftToScriptS.put(
+                net.minecraft.network.packet.s2c.play.EntityMoveS2CPacket.PositionAndAngles.class, S14.class);
+        minecraftToScriptS.put(EntityEquipmentS2CPacket.class, S04.class);
+    }
+}

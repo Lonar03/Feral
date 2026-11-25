@@ -1,0 +1,78 @@
+plugins {
+	id 'fabric-loom' version '1.19-SNAPSHOT'
+	id 'ploceus' version '1.19-SNAPSHOT'
+	id 'com.diffplug.spotless' version '8.12.0'
+}
+
+base {
+	archivesName = project.archives_base_name
+}
+version = "${project.version}+mc${project.minecraft_version}"
+group = project.maven_group
+
+ploceus {
+	setIntermediaryGeneration(2)
+}
+
+loom {
+	accessWidenerPath = file('src/main/resources/feral.ornithe.accesswidener')
+}
+
+// Minecraft 1.8.9 (LWJGL 2) needs a Java 8 runtime; Gradle itself runs on Java 25+.
+tasks.named('runClient', JavaExec) {
+	javaLauncher = javaToolchains.launcherFor {
+		languageVersion = JavaLanguageVersion.of(8)
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	mappings ploceus.featherMappings(project.feather_build)
+	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+
+	ploceus.dependOsl(project.osl_version)
+
+	// Bundled inside the mod jar (jar-in-jar), same as the original release.
+	implementation("org.java-websocket:Java-WebSocket:${project.java_websocket_version}") { transitive = false }
+	include("org.java-websocket:Java-WebSocket:${project.java_websocket_version}") { transitive = false }
+}
+
+processResources {
+	inputs.property 'version', version
+
+	filesMatching('fabric.mod.json') {
+		expand 'version': version
+	}
+}
+
+// Same code style as MeowerClient. `./gradlew build` fails on unformatted code, run `./gradlew spotlessApply` first.
+spotless {
+	java {
+		target 'src/main/java/**/*.java'
+		palantirJavaFormat('2.103.0')
+		removeUnusedImports()
+		trimTrailingWhitespace()
+		endWithNewline()
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.encoding = 'UTF-8'
+	it.options.release = 8
+}
+
+java {
+	sourceCompatibility = JavaVersion.VERSION_1_8
+	targetCompatibility = JavaVersion.VERSION_1_8
+}
+
+jar {
+	from('LICENSE') {
+		rename { "${it}_${base.archivesName.get()}" }
+	}
+	from('LICENSE_raven-bs')
+}

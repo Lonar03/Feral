@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "id": "feral",
+  "version": "${version}",
+  "name": "Feral",
+  "description": "A Minecraft mod designed for Hypixel minigames. Based on Raven bS.",
+  "authors": [
+    "Lonar03"
+  ],
+  "contributors": [
+    "Strangerrrs (Raven bS)"
+  ],
+  "contact": {
+    "sources": "https://github.com/Lonar03/Feral"
+  },
+  "license": [
+    "GPL-3.0-only",
+    "MIT"
+  ],
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "keystrokesmod.platform.ornithe.OrnitheEntrypoint"
+    ]
+  },
+  "mixins": [
+    "mixins.feral.json",
+    "mixins.feral.ornithe.json"
+  ],
+  "accessWidener": "feral.ornithe.accesswidener",
+  "depends": {
+    "fabricloader": ">=0.20.1",
+    "java": ">=8",
+    "minecraft": "1.8.9",
+    "osl-lifecycle-events": ">=0.6.1",
+    "osl-networking": ">=0.12.0"
+  }
+}
