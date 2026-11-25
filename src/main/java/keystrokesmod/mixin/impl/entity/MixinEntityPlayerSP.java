@@ -460,4 +460,14 @@ public abstract class MixinEntityPlayerSP extends ClientPlayerEntity {
             this.syncAbilities();
         }
     }
+
+    // Keep Inventory (ported from MeowerClient): closing a preserved container keeps it open server-side.
+    @Inject(method = "closeMenu", at = @At("HEAD"), cancellable = true)
+    private void feral$keepInventoryOpen(CallbackInfo ci) {
+        LocalClientPlayerEntity self = (LocalClientPlayerEntity) (Object) this;
+        if (self.menu != null
+                && keystrokesmod.module.impl.player.KeepInventory.shouldPreserveFor(self.menu.networkId)) {
+            ci.cancel();
+        }
+    }
 }

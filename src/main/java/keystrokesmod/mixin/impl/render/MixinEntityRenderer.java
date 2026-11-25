@@ -1,5 +1,7 @@
 package keystrokesmod.mixin.impl.render;
 
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
+import java.util.List;
 import keystrokesmod.event.PostMouseSelectionEvent;
 import keystrokesmod.helper.RotationHelper;
 import keystrokesmod.mixin.interfaces.ISaturationRenderer;
@@ -245,5 +247,21 @@ public class MixinEntityRenderer implements ISaturationRenderer {
 
             rh.swappedForMouseOver = false;
         }
+    }
+
+    // Ignore Block: entities it ignores (armor stands, item frames...) can't be targeted through the crosshair.
+    @ModifyExpressionValue(
+            method = "pick",
+            at =
+                    @At(
+                            value = "INVOKE",
+                            target =
+                                    "Lnet/minecraft/client/world/ClientWorld;getEntities(Lnet/minecraft/entity/Entity;Lnet/minecraft/util/math/Box;Lcom/google/common/base/Predicate;)Ljava/util/List;"))
+    private List<Entity> feral$filterMouseOverEntities(List<Entity> entities) {
+        if (keystrokesmod.module.ModuleManager.ignoreBlock != null
+                && keystrokesmod.module.ModuleManager.ignoreBlock.isEnabled()) {
+            entities.removeIf(keystrokesmod.module.ModuleManager.ignoreBlock::shouldIgnore);
+        }
+        return entities;
     }
 }

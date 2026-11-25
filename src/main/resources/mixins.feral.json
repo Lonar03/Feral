@@ -4,6 +4,9 @@
     "compatibilityLevel": "JAVA_8",
     "mixins": [
         "entity.MixinEntity",
+        "world.MixinBlockBarrier",
+        "render.MixinBarrierParticle",
+        "render.MixinBlockStateMapper",
         "render.MixinFontRenderer",
         "entity.MixinEntityPlayerSP",
         "render.MixinLayerCape",
@@ -52,6 +55,8 @@
         "accessor.IAccessorEntity",
         "accessor.IAccessorMouseHelper",
         "accessor.IAccessorKeyBinding",
+        "accessor.IAccessorCloseInventoryMenuC2S",
+        "accessor.IAccessorCloseInventoryMenuS2C",
         "accessor.IAccessorShaderGroup"
     ],
     "minVersion": "0.8"
