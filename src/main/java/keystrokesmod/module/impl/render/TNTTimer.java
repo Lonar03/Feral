@@ -6,7 +6,9 @@ import java.util.ArrayList;
 import keystrokesmod.module.Module;
 import keystrokesmod.module.setting.impl.SliderSetting;
 import keystrokesmod.platform.ornithe.ForgeEvents;
+import keystrokesmod.utility.OverlayEntityScans;
 import keystrokesmod.utility.Utils;
+import keystrokesmod.utility.WorldEntityScan.Kind;
 import net.minecraft.client.render.TextRenderer;
 import net.minecraft.client.render.entity.EntityRenderDispatcher;
 import net.minecraft.client.render.platform.GlStateManager;
@@ -15,8 +17,6 @@ import net.minecraft.client.render.vertex.DefaultVertexFormat;
 import net.minecraft.client.render.vertex.Tesselator;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.PrimedTntEntity;
-import net.minecraft.scoreboard.Scoreboard;
-import net.minecraft.scoreboard.ScoreboardObjective;
 import org.lwjgl.opengl.GL11;
 
 public class TNTTimer extends Module {
@@ -37,7 +37,7 @@ public class TNTTimer extends Module {
     @ForgeEvents.SubscribeEvent
     public void onClientTick(ForgeEvents.TickEvent.ClientTickEvent event) {
         if (event.phase == ForgeEvents.TickEvent.Phase.END) {
-            this.updateTrackedTnt();
+            this.updateTrackedTnt(event);
         }
     }
 
@@ -64,13 +64,13 @@ public class TNTTimer extends Module {
         }
     }
 
-    private void updateTrackedTnt() {
+    private void updateTrackedTnt(ForgeEvents.TickEvent.ClientTickEvent event) {
         this.trackedTntCount = 0;
         this.trackedBedwars = false;
         if (Utils.nullCheck() && mc.world != null) {
-            this.trackedBedwars = this.isSidebarBedwars();
+            this.trackedBedwars = Utils.sidebarTitleContainsBedWars();
 
-            for (Entity entity : mc.world.entities) {
+            for (Entity entity : OverlayEntityScans.tick(event, mc, Kind.PRIMED_TNT)) {
                 if (entity instanceof PrimedTntEntity) {
                     PrimedTntEntity tnt = (PrimedTntEntity) entity;
                     int fuse = this.trackedBedwars ? tnt.fuseTimer - 28 : tnt.fuseTimer;
@@ -132,20 +132,5 @@ public class TNTTimer extends Module {
         GlStateManager.disableBlend();
         GlStateManager.color4f(1.0F, 1.0F, 1.0F, 1.0F);
         GL11.glPopMatrix();
-    }
-
-    private boolean isSidebarBedwars() {
-        if (mc.world == null) {
-            return false;
-        }
-
-        Scoreboard sb = mc.world.getScoreboard();
-        if (sb == null) {
-            return false;
-        }
-
-        ScoreboardObjective objective = sb.getDisplayObjective(1);
-        return objective != null
-                && Utils.stripString(objective.getDisplayName()).contains("BED WARS");
     }
 }

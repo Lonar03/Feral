@@ -4,8 +4,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import keystrokesmod.module.setting.impl.BlockListSetting;
 import net.minecraft.block.Block;
 import net.minecraft.block.Blocks;
@@ -28,35 +30,7 @@ public final class BlockSearchIndex {
             List<BlockSearchIndex.ScoredBlock> scored = new ArrayList<>();
 
             for (BlockSearchIndex.BlockEntry entry : allBlockEntries) {
-                String locLower = entry.displayName.toLowerCase();
-                String reg = entry.storageId.toLowerCase();
-                String regPath = reg.indexOf(58) >= 0 ? reg.substring(reg.indexOf(58) + 1) : reg;
-                int score = 0;
-                if (locLower.equals(lq)) {
-                    score = 1000;
-                } else if (regPath.equals(lq)) {
-                    score = 900;
-                } else if (locLower.startsWith(lq)) {
-                    score = 800;
-                } else if (regPath.startsWith(lq)) {
-                    score = 700;
-                } else {
-                    String[] tokens = locLower.split("\\s+");
-
-                    for (String t : tokens) {
-                        if (t.startsWith(lq)) {
-                            score = 600;
-                            break;
-                        }
-                    }
-
-                    if (score == 0 && locLower.contains(lq)) {
-                        score = 500;
-                    } else if (score == 0 && regPath.contains(lq)) {
-                        score = 400;
-                    }
-                }
-
+                int score = score(entry, lq);
                 if (score > 0 && !setting.contains(entry.storageId)) {
                     scored.add(new BlockSearchIndex.ScoredBlock(entry, score));
                 }
@@ -87,35 +61,7 @@ public final class BlockSearchIndex {
                 if (!setting.contains(entry.storageId)) {
                     String wildcard = getRegistryId(entry.storageId);
                     if (wildcard == null || !setting.contains(wildcard + ":*")) {
-                        String locLower = entry.displayName.toLowerCase();
-                        String reg = entry.storageId.toLowerCase();
-                        String regPath = reg.indexOf(58) >= 0 ? reg.substring(reg.indexOf(58) + 1) : reg;
-                        int score = 0;
-                        if (locLower.equals(lq)) {
-                            score = 1000;
-                        } else if (regPath.equals(lq)) {
-                            score = 900;
-                        } else if (locLower.startsWith(lq)) {
-                            score = 800;
-                        } else if (regPath.startsWith(lq)) {
-                            score = 700;
-                        } else {
-                            String[] tokens = locLower.split("\\s+");
-
-                            for (String t : tokens) {
-                                if (t.startsWith(lq)) {
-                                    score = 600;
-                                    break;
-                                }
-                            }
-
-                            if (score == 0 && locLower.contains(lq)) {
-                                score = 500;
-                            } else if (score == 0 && regPath.contains(lq)) {
-                                score = 400;
-                            }
-                        }
-
+                        int score = score(entry, lq);
                         if (score > 0) {
                             scored.add(new BlockSearchIndex.ScoredBlock(entry, score));
                         }
@@ -126,27 +72,17 @@ public final class BlockSearchIndex {
             scored.sort(Comparator.<BlockSearchIndex.ScoredBlock>comparingInt(s -> -s.score)
                     .thenComparing(s -> s.entry.displayName, String.CASE_INSENSITIVE_ORDER)
                     .thenComparing(s -> s.entry.storageId));
-            Map<String, Integer> bestScoreByRegistry = new HashMap<>();
-
-            for (BlockSearchIndex.ScoredBlock sb : scored) {
-                String rid = getRegistryId(sb.entry.storageId);
-                if (rid != null && (!bestScoreByRegistry.containsKey(rid) || bestScoreByRegistry.get(rid) < sb.score)) {
-                    bestScoreByRegistry.put(rid, sb.score);
-                }
-            }
-
             List<BlockSearchIndex.GroupedBlockResult> results = new ArrayList<>();
-            List<String> seen = new ArrayList<>();
+            Set<String> seen = new HashSet<>();
 
+            // The first hit in each registry group already has its highest score.
             for (BlockSearchIndex.ScoredBlock sb : scored) {
                 String rid = getRegistryId(sb.entry.storageId);
-                if (rid != null && !seen.contains(rid)) {
-                    seen.add(rid);
+                if (rid != null && seen.add(rid)) {
                     List<BlockSearchIndex.BlockEntry> variants = getVariants(rid);
                     if (!variants.isEmpty()) {
-                        int groupScore = bestScoreByRegistry.containsKey(rid) ? bestScoreByRegistry.get(rid) : sb.score;
-                        results.add(new BlockSearchIndex.GroupedBlockResult(rid, variants, groupScore));
-                        if (results.size() >= 100) {
+                        results.add(new BlockSearchIndex.GroupedBlockResult(rid, variants, sb.score));
+                        if (results.size() >= MAX_SEARCH_RESULTS) {
                             break;
                         }
                     }
@@ -159,6 +95,12 @@ public final class BlockSearchIndex {
         } else {
             return Collections.emptyList();
         }
+    }
+
+    private static int score(BlockEntry entry, String query) {
+        String name = entry.displayName.toLowerCase();
+        String id = entry.storageId.toLowerCase();
+        return SearchRanking.score(name, id.substring(id.indexOf(':') + 1), query);
     }
 
     public static List<BlockSearchIndex.BlockEntry> getVariants(String registryId) {

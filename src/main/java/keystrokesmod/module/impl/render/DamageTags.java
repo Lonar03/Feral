@@ -11,8 +11,10 @@ import keystrokesmod.module.Module;
 import keystrokesmod.module.setting.impl.ButtonSetting;
 import keystrokesmod.module.setting.impl.SliderSetting;
 import keystrokesmod.platform.ornithe.ForgeEvents;
+import keystrokesmod.utility.OverlayEntityScans;
 import keystrokesmod.utility.RenderUtils;
 import keystrokesmod.utility.Utils;
+import keystrokesmod.utility.WorldEntityScan.Kind;
 import keystrokesmod.utility.font.FeralFontRenderer;
 import keystrokesmod.utility.font.FontManager;
 import net.minecraft.client.render.entity.EntityRenderDispatcher;
@@ -123,7 +125,7 @@ public class DamageTags extends Module {
 
             long now = System.currentTimeMillis();
             this.flushPendingUpdates(e.partialTicks, now);
-            this.updateTrackedStates();
+            this.updateTrackedStates(e);
             this.pruneExpiredTags(now);
             if (!this.activeTags.isEmpty()) {
                 FeralFontRenderer fontRenderer = this.getDamageTagFontRenderer();
@@ -196,7 +198,7 @@ public class DamageTags extends Module {
         }
     }
 
-    private void updateTrackedStates() {
+    private void updateTrackedStates(ForgeEvents.RenderWorldLastEvent event) {
         if (mc.world == null) {
             this.trackedStates.clear();
         } else {
@@ -206,7 +208,7 @@ public class DamageTags extends Module {
                         || entityx instanceof ArmorStandEntity
                         || entityx == mc.player;
             });
-            List<Entity> loaded = mc.world.entities;
+            List<Entity> loaded = OverlayEntityScans.render(event, mc, Kind.LIVING);
             int i = 0;
 
             for (int n = loaded.size(); i < n; i++) {

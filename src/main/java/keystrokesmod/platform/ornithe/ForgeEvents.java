@@ -6,6 +6,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.List;
+import keystrokesmod.utility.WorldEntityScan;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.render.entity.LivingEntityRenderer;
@@ -366,10 +367,21 @@ public final class ForgeEvents {
     public static final class RenderWorldLastEvent extends ForgeEvents.Event {
         public final WorldRenderer context;
         public final float partialTicks;
+        private WorldEntityScan entityScan;
 
         public RenderWorldLastEvent(WorldRenderer context, float partialTicks) {
             this.context = context;
             this.partialTicks = partialTicks;
+        }
+
+        /** Reuse ordered discovery on this render post without capturing any mutable render state. */
+        public List<Entity> entityCandidates(World world, int kinds, WorldEntityScan.Kind kind) {
+            this.entityScan = WorldEntityScan.refresh(this.entityScan, world, kinds | kind.bit());
+            return this.entityScan == null ? world.entities : this.entityScan.candidates(kind);
+        }
+
+        public List<Entity> existingEntityCandidates(World world, WorldEntityScan.Kind kind) {
+            return this.entityScan == null ? world.entities : this.entityScan.candidatesIfFresh(world, kind);
         }
     }
 
@@ -410,8 +422,16 @@ public final class ForgeEvents {
         }
 
         public static final class ClientTickEvent extends ForgeEvents.TickEvent {
+            private WorldEntityScan entityScan;
+
             public ClientTickEvent(ForgeEvents.TickEvent.Phase phase) {
                 super(phase, ForgeEvents.Side.CLIENT);
+            }
+
+            /** Not the render snapshot, and never reused across ticks or phases. */
+            public List<Entity> entityCandidates(World world, int kinds, WorldEntityScan.Kind kind) {
+                this.entityScan = WorldEntityScan.refresh(this.entityScan, world, kinds | kind.bit());
+                return this.entityScan == null ? world.entities : this.entityScan.candidates(kind);
             }
         }
 

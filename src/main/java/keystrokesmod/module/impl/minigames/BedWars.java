@@ -48,7 +48,6 @@ import net.minecraft.client.render.platform.GlStateManager;
 import net.minecraft.client.render.platform.Lighting;
 import net.minecraft.client.render.texture.TextureAtlas;
 import net.minecraft.client.render.world.WorldRenderer;
-import net.minecraft.client.resource.model.ModelTransformations.Type;
 import net.minecraft.enchantment.Enchantment;
 import net.minecraft.enchantment.EnchantmentHelper;
 import net.minecraft.entity.Entities;
@@ -782,23 +781,7 @@ public class BedWars extends Module {
                 GlStateManager.enableBlend();
                 GlStateManager.blendFunc(770, 771);
                 GlStateManager.color4f(1.0F, 1.0F, 1.0F, 1.0F);
-                GlStateManager.translatef(x, y, 100.0F + renderItem.zOffset);
-                GlStateManager.translatef(8.0F, 8.0F, 0.0F);
-                GlStateManager.scalef(1.0F, 1.0F, -1.0F);
-                GlStateManager.scalef(0.5F, 0.5F, 0.5F);
-                if (model.isGui3d()) {
-                    GlStateManager.scalef(40.0F, 40.0F, 40.0F);
-                    GlStateManager.rotatef(210.0F, 1.0F, 0.0F, 0.0F);
-                    GlStateManager.rotatef(-135.0F, 0.0F, 1.0F, 0.0F);
-                    GlStateManager.enableLighting();
-                } else {
-                    GlStateManager.scalef(64.0F, 64.0F, 64.0F);
-                    GlStateManager.rotatef(180.0F, 1.0F, 0.0F, 0.0F);
-                    GlStateManager.disableLighting();
-                }
-
-                model = ClientPlatform.ForgeHooksClient.handleCameraTransforms(model, Type.GUI);
-                renderItem.renderItem(heldItem, model);
+                RenderUtils.drawGuiItemModel(renderItem, heldItem, model, x, y);
             } finally {
                 GlStateManager.disableBlend();
                 GlStateManager.disableRescaleNormal();

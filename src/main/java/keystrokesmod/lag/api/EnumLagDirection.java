@@ -37,6 +37,17 @@ public enum EnumLagDirection implements IMinecraftInstance {
         this.channel = channel;
     }
 
+    public static Set<EnumLagDirection> forMode(int mode) {
+        switch (mode) {
+            case 0:
+                return ONLY_INBOUND;
+            case 2:
+                return BIDIRECTIONAL;
+            default:
+                return ONLY_OUTBOUND;
+        }
+    }
+
     public void passThroughChannel(@NotNull Packet<?> packet) {
         this.channel.accept(packet);
     }

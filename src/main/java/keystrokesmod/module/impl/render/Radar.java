@@ -1,16 +1,14 @@
 package keystrokesmod.module.impl.render;
 
 import java.awt.Color;
+import keystrokesmod.clickgui.HudPositionEditor;
 import keystrokesmod.module.Module;
 import keystrokesmod.module.impl.world.AntiBot;
 import keystrokesmod.module.setting.impl.ButtonSetting;
 import keystrokesmod.module.setting.impl.SliderSetting;
-import keystrokesmod.platform.ClientPlatform;
 import keystrokesmod.platform.ornithe.ForgeEvents;
 import keystrokesmod.utility.RenderUtils;
 import keystrokesmod.utility.Utils;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.render.Window;
 import net.minecraft.entity.living.player.PlayerEntity;
 import org.lwjgl.opengl.GL11;
@@ -191,88 +189,44 @@ public class Radar extends Module {
         this.relativePosY = this.posY / Math.max(1, resolution.getHeight());
     }
 
-    private class EditScreen extends Screen {
-        private ButtonWidget resetPosition;
-        private boolean dragging;
-        private float actualX;
-        private float actualY;
-        private float lastActualX;
-        private float lastActualY;
-        private int lastMouseX;
-        private int lastMouseY;
-
-        private EditScreen() {}
-
-        public void init() {
-            super.init();
-            this.buttons.add(
-                    this.resetPosition =
-                            new ButtonWidget(1, this.width - 90, this.height - 25, 85, 20, "Reset position"));
-            Radar.this.syncPositionToResolution(new Window(this.minecraft));
-            this.actualX = Radar.this.posX;
-            this.actualY = Radar.this.posY;
+    private class EditScreen extends HudPositionEditor {
+        private EditScreen() {
+            super("Drag the radar to reposition it.", 10);
         }
 
-        public void render(int mouseX, int mouseY, float partialTicks) {
-            Window resolution = new Window(this.minecraft);
-            if (!this.dragging) {
-                Radar.this.syncPositionToResolution(resolution);
-                this.actualX = Radar.this.posX;
-                this.actualY = Radar.this.posY;
-            }
+        @Override
+        protected void syncAnchor(Window window) {
+            Radar.this.syncPositionToResolution(window);
+        }
 
-            fill(0, 0, this.width, this.height, -1308622848);
-            Radar.this.setAbsolutePosition(this.actualX, this.actualY, resolution);
+        @Override
+        protected float anchorX() {
+            return Radar.this.posX;
+        }
+
+        @Override
+        protected float anchorY() {
+            return Radar.this.posY;
+        }
+
+        @Override
+        protected void drawPreview(float x, float y, Window window) {
+            Radar.this.setAbsolutePosition(x, y, window);
             Radar.this.renderRadar(true);
-            this.actualX = Radar.this.posX;
-            this.actualY = Radar.this.posY;
-            String message = "Drag the radar to reposition it.";
-            int textX = resolution.getWidth() / 2 - this.textRenderer.getWidth(message) / 2;
-            int textY = resolution.getHeight() / 2 - 10;
-            RenderUtils.drawColoredString(message, '-', textX, textY, 2L, 0L, true, this.minecraft.textRenderer);
-            ClientPlatform.handleInput(this);
-            super.render(mouseX, mouseY, partialTicks);
         }
 
-        protected void mouseDragged(int mouseX, int mouseY, int button, long timeSinceLastClick) {
-            super.mouseDragged(mouseX, mouseY, button, timeSinceLastClick);
-            if (button == 0) {
-                if (this.dragging) {
-                    this.actualX = this.lastActualX + (mouseX - this.lastMouseX);
-                    this.actualY = this.lastActualY + (mouseY - this.lastMouseY);
-                } else {
-                    float size = Radar.this.getRadarSize();
-                    if (mouseX >= Radar.this.posX
-                            && mouseX <= Radar.this.posX + size
-                            && mouseY >= Radar.this.posY
-                            && mouseY <= Radar.this.posY + size) {
-                        this.dragging = true;
-                        this.lastMouseX = mouseX;
-                        this.lastMouseY = mouseY;
-                        this.lastActualX = this.actualX;
-                        this.lastActualY = this.actualY;
-                    }
-                }
-            }
+        @Override
+        protected boolean hitsPreview(int mouseX, int mouseY) {
+            float size = Radar.this.getRadarSize();
+            return mouseX >= Radar.this.posX
+                    && mouseX <= Radar.this.posX + size
+                    && mouseY >= Radar.this.posY
+                    && mouseY <= Radar.this.posY + size;
         }
 
-        protected void mouseReleased(int mouseX, int mouseY, int state) {
-            super.mouseReleased(mouseX, mouseY, state);
-            if (state == 0) {
-                this.dragging = false;
-            }
-        }
-
-        public void buttonClicked(ButtonWidget button) {
-            if (button == this.resetPosition) {
-                Radar.this.resetPosition();
-                this.actualX = Radar.this.posX;
-                this.actualY = Radar.this.posY;
-            }
-        }
-
-        public boolean shouldPauseGame() {
-            return false;
+        @Override
+        protected void resetAnchor() {
+            Radar.this.resetPosition();
         }
     }
 }

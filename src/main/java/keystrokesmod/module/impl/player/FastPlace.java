@@ -9,17 +9,12 @@ import keystrokesmod.module.setting.impl.BlockListSetting;
 import keystrokesmod.module.setting.impl.ButtonSetting;
 import keystrokesmod.module.setting.impl.ItemListSetting;
 import keystrokesmod.module.setting.impl.SliderSetting;
-import keystrokesmod.platform.ClientPlatform;
 import keystrokesmod.platform.ornithe.ForgeEvents;
-import keystrokesmod.utility.RenderUtils;
+import keystrokesmod.utility.BlockCountHud;
 import keystrokesmod.utility.Timer;
 import keystrokesmod.utility.Utils;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.BlockState;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.client.render.Window;
-import net.minecraft.client.render.platform.GlStateManager;
 import net.minecraft.item.BlockItem;
 import net.minecraft.item.ItemStack;
 import net.minecraft.network.packet.c2s.play.PlayerUseC2SPacket;
@@ -41,10 +36,7 @@ public class FastPlace extends Module {
     public ItemListSetting ignoredHeldItems;
     public ButtonSetting blockBlacklistToggle;
     public BlockListSetting blockBlacklist;
-    private float posX = Float.NaN;
-    private float posY = Float.NaN;
-    private float relativePosX = Float.NaN;
-    private float relativePosY = Float.NaN;
+    private final BlockCountHud blockCountHud = new BlockCountHud(mc, this::getTotalBlocks);
     private long rightClickStartTime;
     private Timer fadeTimer;
     private Timer fadeInTimer;
@@ -71,7 +63,7 @@ public class FastPlace extends Module {
         this.registerSetting(this.showBlockCount = new ButtonSetting("Show block count", false));
         this.registerSetting(
                 this.editPosition =
-                        new ButtonSetting("Edit position", () -> mc.openScreen(new FastPlace.EditScreen())));
+                        new ButtonSetting("Edit position", () -> mc.openScreen(this.blockCountHud.editScreen())));
         this.registerSetting(
                 this.ignoredHeldItemsToggle = new ButtonSetting(
                         "Held item blacklist",
@@ -193,7 +185,7 @@ public class FastPlace extends Module {
                         }
 
                         this.previousAlpha = alpha;
-                        this.renderBlockCount((int) alpha);
+                        this.blockCountHud.render((int) alpha);
                     } else {
                         if (this.previousAlpha <= 10.0F) {
                             this.fadeTimer = null;
@@ -214,7 +206,7 @@ public class FastPlace extends Module {
 
                         this.previousAlpha = alpha;
                         if (alpha > 10.0F) {
-                            this.renderBlockCount((int) alpha);
+                            this.blockCountHud.render((int) alpha);
                         }
                     }
                 }
@@ -223,104 +215,27 @@ public class FastPlace extends Module {
     }
 
     public float getPosX() {
-        this.syncPosition();
-        return this.posX;
+        return this.blockCountHud.getPosX();
     }
 
     public float getPosY() {
-        this.syncPosition();
-        return this.posY;
+        return this.blockCountHud.getPosY();
     }
 
     public float getRelativePosX() {
-        this.syncPosition();
-        return this.relativePosX;
+        return this.blockCountHud.getRelativePosX();
     }
 
     public float getRelativePosY() {
-        this.syncPosition();
-        return this.relativePosY;
+        return this.blockCountHud.getRelativePosY();
     }
 
     public void setRelativePosition(float normalizedX, float normalizedY) {
-        this.relativePosX = normalizedX;
-        this.relativePosY = normalizedY;
-        this.syncPosition();
+        this.blockCountHud.setRelativePosition(normalizedX, normalizedY);
     }
 
     public void setAbsolutePosition(float absoluteX, float absoluteY) {
-        this.setAbsolutePosition(absoluteX, absoluteY, new Window(mc));
-    }
-
-    public void setAbsolutePosition(float absoluteX, float absoluteY, Window resolution) {
-        this.posX = absoluteX;
-        this.posY = absoluteY;
-        int w = Math.max(1, resolution.getWidth());
-        int h = Math.max(1, resolution.getHeight());
-        this.relativePosX = absoluteX / w;
-        this.relativePosY = absoluteY / h;
-    }
-
-    public void resetPosition() {
-        this.relativePosX = Float.NaN;
-        this.relativePosY = Float.NaN;
-        this.posX = Float.NaN;
-        this.posY = Float.NaN;
-        this.syncPosition();
-    }
-
-    private void syncPosition() {
-        this.syncPosition(new Window(mc));
-    }
-
-    private void syncPosition(Window resolution) {
-        int w = Math.max(1, resolution.getWidth());
-        int h = Math.max(1, resolution.getHeight());
-        if (Float.isNaN(this.relativePosX) || Float.isNaN(this.relativePosY)) {
-            if (Float.isNaN(this.posX) || Float.isNaN(this.posY)) {
-                this.posX = w / 2.0F + 9.0F;
-                this.posY = h / 2.0F - mc.textRenderer.fontHeight / 2.0F + 1.0F;
-            }
-
-            this.relativePosX = this.posX / w;
-            this.relativePosY = this.posY / h;
-        }
-
-        this.posX = this.relativePosX * w;
-        this.posY = this.relativePosY * h;
-    }
-
-    private void renderBlockCount(int alpha) {
-        this.renderBlockCount(alpha, false);
-    }
-
-    private void renderBlockCount(int alpha, boolean editing) {
-        int blocks = this.getTotalBlocks();
-        if (editing && blocks == 0) {
-            blocks = 64;
-        }
-
-        String color = "§";
-        if (blocks <= 5) {
-            color = color + "c";
-        } else if (blocks <= 15) {
-            color = color + "6";
-        } else if (blocks <= 25) {
-            color = color + "e";
-        } else {
-            color = "";
-        }
-
-        int colorAlpha = Utils.mergeAlpha(-1, alpha);
-        Window scaledResolution = new Window(mc);
-        this.syncPosition(scaledResolution);
-        GlStateManager.pushMatrix();
-        GlStateManager.enableBlend();
-        GlStateManager.blendFunc(770, 771);
-        mc.textRenderer.drawWithShadow(
-                color + blocks + " §rblock" + (blocks == 1 ? "" : "s"), this.posX, this.posY, colorAlpha);
-        GlStateManager.disableBlend();
-        GlStateManager.popMatrix();
+        this.blockCountHud.setAbsolutePosition(absoluteX, absoluteY);
     }
 
     private boolean isBlockedHoverBlock() {
@@ -402,98 +317,6 @@ public class FastPlace extends Module {
             return totalBlocks;
         } else {
             return 0;
-        }
-    }
-
-    private class EditScreen extends Screen {
-        private ButtonWidget resetBtn;
-        private boolean dragging;
-        private float actualX;
-        private float actualY;
-        private float lastActualX;
-        private float lastActualY;
-        private int lastMouseX;
-        private int lastMouseY;
-
-        private EditScreen() {}
-
-        public void init() {
-            super.init();
-            this.buttons.add(
-                    this.resetBtn = new ButtonWidget(1, this.width - 90, this.height - 25, 85, 20, "Reset position"));
-            FastPlace.this.syncPosition(new Window(this.minecraft));
-            this.actualX = FastPlace.this.posX;
-            this.actualY = FastPlace.this.posY;
-        }
-
-        public void render(int mouseX, int mouseY, float partialTicks) {
-            Window resolution = new Window(this.minecraft);
-            if (!this.dragging) {
-                FastPlace.this.syncPosition(resolution);
-                this.actualX = FastPlace.this.posX;
-                this.actualY = FastPlace.this.posY;
-            }
-
-            fill(0, 0, this.width, this.height, -1308622848);
-            FastPlace.this.setAbsolutePosition(this.actualX, this.actualY, resolution);
-            FastPlace.this.renderBlockCount(255, true);
-            this.actualX = FastPlace.this.posX;
-            this.actualY = FastPlace.this.posY;
-            String message = "Edit the position by dragging.";
-            int textX = resolution.getWidth() / 2 - this.textRenderer.getWidth(message) / 2;
-            int textY = resolution.getHeight() / 2 - 20;
-            RenderUtils.drawColoredString(message, '-', textX, textY, 2L, 0L, true, this.minecraft.textRenderer);
-            ClientPlatform.handleInput(this);
-            super.render(mouseX, mouseY, partialTicks);
-        }
-
-        protected void mouseDragged(int mouseX, int mouseY, int button, long timeSinceLastClick) {
-            super.mouseDragged(mouseX, mouseY, button, timeSinceLastClick);
-            if (button == 0) {
-                if (this.dragging) {
-                    this.actualX = this.lastActualX + (mouseX - this.lastMouseX);
-                    this.actualY = this.lastActualY + (mouseY - this.lastMouseY);
-                } else {
-                    int blocks = FastPlace.this.getTotalBlocks();
-                    if (blocks == 0) {
-                        blocks = 64;
-                    }
-
-                    String text = blocks + " block" + (blocks == 1 ? "" : "s");
-                    int textWidth = this.textRenderer.getWidth(text);
-                    int textHeight = this.textRenderer.fontHeight;
-                    float minX = FastPlace.this.posX - 2.0F;
-                    float minY = FastPlace.this.posY - 2.0F;
-                    float maxX = FastPlace.this.posX + textWidth + 2.0F;
-                    float maxY = FastPlace.this.posY + textHeight + 2.0F;
-                    if (mouseX >= minX && mouseX <= maxX && mouseY >= minY && mouseY <= maxY) {
-                        this.dragging = true;
-                        this.lastMouseX = mouseX;
-                        this.lastMouseY = mouseY;
-                        this.lastActualX = this.actualX;
-                        this.lastActualY = this.actualY;
-                    }
-                }
-            }
-        }
-
-        protected void mouseReleased(int mouseX, int mouseY, int state) {
-            super.mouseReleased(mouseX, mouseY, state);
-            if (state == 0) {
-                this.dragging = false;
-            }
-        }
-
-        public void buttonClicked(ButtonWidget button) {
-            if (button == this.resetBtn) {
-                FastPlace.this.resetPosition();
-                this.actualX = FastPlace.this.posX;
-                this.actualY = FastPlace.this.posY;
-            }
-        }
-
-        public boolean shouldPauseGame() {
-            return false;
         }
     }
 }

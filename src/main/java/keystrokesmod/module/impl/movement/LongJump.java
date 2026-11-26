@@ -19,7 +19,6 @@ import keystrokesmod.platform.ornithe.ForgeEvents;
 import keystrokesmod.utility.ModuleUtils;
 import keystrokesmod.utility.Utils;
 import net.minecraft.entity.living.effect.StatusEffectInstance;
-import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.network.packet.Packet;
 import net.minecraft.network.packet.c2s.play.PlayerUseC2SPacket;
@@ -553,17 +552,7 @@ public class LongJump extends Module {
     }
 
     private int getFireballSlot() {
-        int n = -1;
-
-        for (int i = 0; i < 9; i++) {
-            ItemStack getStackInSlot = mc.player.inventory.getItem(i);
-            if (getStackInSlot != null && getStackInSlot.getItem() == Items.FIRE_CHARGE) {
-                n = i;
-                break;
-            }
-        }
-
-        return n;
+        return Utils.findHotbarSlot(stack -> stack != null && stack.getItem() == Items.FIRE_CHARGE);
     }
 
     private void enabled() {

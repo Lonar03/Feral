@@ -19,19 +19,15 @@ import keystrokesmod.module.Module;
 import keystrokesmod.module.ModuleManager;
 import keystrokesmod.module.setting.impl.ButtonSetting;
 import keystrokesmod.module.setting.impl.SliderSetting;
-import keystrokesmod.platform.ClientPlatform;
 import keystrokesmod.platform.ornithe.ForgeEvents;
+import keystrokesmod.utility.BlockCountHud;
 import keystrokesmod.utility.RenderUtils;
 import keystrokesmod.utility.RotationUtils;
 import keystrokesmod.utility.Theme;
 import keystrokesmod.utility.Utils;
 import keystrokesmod.utility.scaffold.ScaffoldSupport;
 import net.minecraft.client.entity.living.player.LocalClientPlayerEntity;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.options.KeyBinding;
-import net.minecraft.client.render.Window;
-import net.minecraft.client.render.platform.GlStateManager;
 import net.minecraft.entity.living.effect.StatusEffect;
 import net.minecraft.item.ItemStack;
 import net.minecraft.network.packet.Packet;
@@ -124,10 +120,7 @@ public class Scaffold extends Module {
     private static float lastPlayerYaw;
     private static Float smoothYaw;
     private static LocalClientPlayerEntity sessionPlayer;
-    private float posX = Float.NaN;
-    private float posY = Float.NaN;
-    private float relativePosX = Float.NaN;
-    private float relativePosY = Float.NaN;
+    private final BlockCountHud blockCountHud = new BlockCountHud(mc, this::getTotalBlocks);
     private static final Direction[] SIDES =
             new Direction[] {Direction.EAST, Direction.SOUTH, Direction.NORTH, Direction.WEST};
     private static final Mutable SCRATCH = new Mutable();
@@ -224,7 +217,7 @@ public class Scaffold extends Module {
         this.registerSetting(slowSpeedPotion = new ButtonSetting("Slow speed potion", false));
         this.registerSetting(tower = new ButtonSetting("Tower", false));
         this.registerSetting(spoofItem = new ButtonSetting("Spoof item", false));
-        this.registerSetting(new ButtonSetting("Edit position", () -> mc.openScreen(new Scaffold.EditScreen())));
+        this.registerSetting(new ButtonSetting("Edit position", () -> mc.openScreen(this.blockCountHud.editScreen())));
         ForgeEvents.MinecraftForge.EVENT_BUS.register(this);
     }
 
@@ -1554,7 +1547,7 @@ public class Scaffold extends Module {
                     ? (int) (Math.min((float) elapsed / 125.0F, 1.0F) * 240.0F)
                     : (int) (Math.max(1.0F - (float) elapsed / 125.0F, 0.0F) * 240.0F);
             if (alpha > 0) {
-                this.renderBlockCount(alpha);
+                this.blockCountHud.render(alpha);
             }
         }
     }
@@ -1679,196 +1672,27 @@ public class Scaffold extends Module {
     }
 
     public float getPosX() {
-        this.syncPosition();
-        return this.posX;
+        return this.blockCountHud.getPosX();
     }
 
     public float getPosY() {
-        this.syncPosition();
-        return this.posY;
+        return this.blockCountHud.getPosY();
     }
 
     public float getRelativePosX() {
-        this.syncPosition();
-        return this.relativePosX;
+        return this.blockCountHud.getRelativePosX();
     }
 
     public float getRelativePosY() {
-        this.syncPosition();
-        return this.relativePosY;
+        return this.blockCountHud.getRelativePosY();
     }
 
     public void setRelativePosition(float normalizedX, float normalizedY) {
-        this.relativePosX = normalizedX;
-        this.relativePosY = normalizedY;
-        this.syncPosition();
+        this.blockCountHud.setRelativePosition(normalizedX, normalizedY);
     }
 
     public void setAbsolutePosition(float absoluteX, float absoluteY) {
-        this.setAbsolutePosition(absoluteX, absoluteY, new Window(mc));
-    }
-
-    public void setAbsolutePosition(float absoluteX, float absoluteY, Window resolution) {
-        this.posX = absoluteX;
-        this.posY = absoluteY;
-        int w = Math.max(1, resolution.getWidth());
-        int h = Math.max(1, resolution.getHeight());
-        this.relativePosX = absoluteX / w;
-        this.relativePosY = absoluteY / h;
-    }
-
-    public void resetPosition() {
-        this.relativePosX = Float.NaN;
-        this.relativePosY = Float.NaN;
-        this.posX = Float.NaN;
-        this.posY = Float.NaN;
-        this.syncPosition();
-    }
-
-    private void syncPosition() {
-        this.syncPosition(new Window(mc));
-    }
-
-    private void syncPosition(Window resolution) {
-        int w = Math.max(1, resolution.getWidth());
-        int h = Math.max(1, resolution.getHeight());
-        if (Float.isNaN(this.relativePosX) || Float.isNaN(this.relativePosY)) {
-            if (Float.isNaN(this.posX) || Float.isNaN(this.posY)) {
-                this.posX = w / 2.0F + 9.0F;
-                this.posY = h / 2.0F - mc.textRenderer.fontHeight / 2.0F + 1.0F;
-            }
-
-            this.relativePosX = this.posX / w;
-            this.relativePosY = this.posY / h;
-        }
-
-        this.posX = this.relativePosX * w;
-        this.posY = this.relativePosY * h;
-    }
-
-    private void renderBlockCount(int alpha) {
-        this.renderBlockCount(alpha, false);
-    }
-
-    private void renderBlockCount(int alpha, boolean editing) {
-        int blocks = this.getTotalBlocks();
-        if (editing && blocks == 0) {
-            blocks = 64;
-        }
-
-        String color = "§";
-        if (blocks <= 5) {
-            color = color + "c";
-        } else if (blocks <= 15) {
-            color = color + "6";
-        } else if (blocks <= 25) {
-            color = color + "e";
-        } else {
-            color = "";
-        }
-
-        int colorAlpha = Utils.mergeAlpha(-1, alpha);
-        Window scaledResolution = new Window(mc);
-        this.syncPosition(scaledResolution);
-        GlStateManager.pushMatrix();
-        GlStateManager.enableBlend();
-        GlStateManager.blendFunc(770, 771);
-        mc.textRenderer.drawWithShadow(
-                color + blocks + " §rblock" + (blocks == 1 ? "" : "s"), this.posX, this.posY, colorAlpha);
-        GlStateManager.disableBlend();
-        GlStateManager.popMatrix();
-    }
-
-    private class EditScreen extends Screen {
-        private ButtonWidget resetBtn;
-        private boolean dragging;
-        private float actualX;
-        private float actualY;
-        private float lastActualX;
-        private float lastActualY;
-        private int lastMouseX;
-        private int lastMouseY;
-
-        private EditScreen() {}
-
-        public void init() {
-            super.init();
-            this.buttons.add(
-                    this.resetBtn = new ButtonWidget(1, this.width - 90, this.height - 25, 85, 20, "Reset position"));
-            Scaffold.this.syncPosition(new Window(this.minecraft));
-            this.actualX = Scaffold.this.posX;
-            this.actualY = Scaffold.this.posY;
-        }
-
-        public void render(int mouseX, int mouseY, float partialTicks) {
-            Window resolution = new Window(this.minecraft);
-            if (!this.dragging) {
-                Scaffold.this.syncPosition(resolution);
-                this.actualX = Scaffold.this.posX;
-                this.actualY = Scaffold.this.posY;
-            }
-
-            fill(0, 0, this.width, this.height, -1308622848);
-            Scaffold.this.setAbsolutePosition(this.actualX, this.actualY, resolution);
-            Scaffold.this.renderBlockCount(255, true);
-            this.actualX = Scaffold.this.posX;
-            this.actualY = Scaffold.this.posY;
-            String message = "Edit the position by dragging.";
-            int textX = resolution.getWidth() / 2 - this.textRenderer.getWidth(message) / 2;
-            int textY = resolution.getHeight() / 2 - 20;
-            RenderUtils.drawColoredString(message, '-', textX, textY, 2L, 0L, true, this.minecraft.textRenderer);
-            ClientPlatform.handleInput(this);
-            super.render(mouseX, mouseY, partialTicks);
-        }
-
-        protected void mouseDragged(int mouseX, int mouseY, int button, long timeSinceLastClick) {
-            super.mouseDragged(mouseX, mouseY, button, timeSinceLastClick);
-            if (button == 0) {
-                if (this.dragging) {
-                    this.actualX = this.lastActualX + (mouseX - this.lastMouseX);
-                    this.actualY = this.lastActualY + (mouseY - this.lastMouseY);
-                } else {
-                    int blocks = Scaffold.this.getTotalBlocks();
-                    if (blocks == 0) {
-                        blocks = 64;
-                    }
-
-                    String text = blocks + " block" + (blocks == 1 ? "" : "s");
-                    int textWidth = this.textRenderer.getWidth(text);
-                    int textHeight = this.textRenderer.fontHeight;
-                    float minX = Scaffold.this.posX - 2.0F;
-                    float minY = Scaffold.this.posY - 2.0F;
-                    float maxX = Scaffold.this.posX + textWidth + 2.0F;
-                    float maxY = Scaffold.this.posY + textHeight + 2.0F;
-                    if (mouseX >= minX && mouseX <= maxX && mouseY >= minY && mouseY <= maxY) {
-                        this.dragging = true;
-                        this.lastMouseX = mouseX;
-                        this.lastMouseY = mouseY;
-                        this.lastActualX = this.actualX;
-                        this.lastActualY = this.actualY;
-                    }
-                }
-            }
-        }
-
-        protected void mouseReleased(int mouseX, int mouseY, int state) {
-            super.mouseReleased(mouseX, mouseY, state);
-            if (state == 0) {
-                this.dragging = false;
-            }
-        }
-
-        public void buttonClicked(ButtonWidget button) {
-            if (button == this.resetBtn) {
-                Scaffold.this.resetPosition();
-                this.actualX = Scaffold.this.posX;
-                this.actualY = Scaffold.this.posY;
-            }
-        }
-
-        public boolean shouldPauseGame() {
-            return false;
-        }
+        this.blockCountHud.setAbsolutePosition(absoluteX, absoluteY);
     }
 
     public enum FastScaffold {

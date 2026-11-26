@@ -12,14 +12,15 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Locale;
 import java.util.Random;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.function.Predicate;
 import java.util.stream.IntStream;
 import keystrokesmod.Feral;
 import keystrokesmod.helper.MouseHelper;
@@ -138,6 +139,16 @@ public class Utils implements IMinecraftInstance {
     public static HashSet<String> friends = new HashSet<>();
     public static HashSet<String> enemies = new HashSet<>();
     public static final Logger log = LogManager.getLogger();
+
+    /** Returns the first matching hotbar slot, or -1. The predicate also receives empty slots. */
+    public static int findHotbarSlot(Predicate<ItemStack> matches) {
+        for (int slot = 0; slot < PlayerInventory.getHotbarSize(); slot++) {
+            if (matches.test(mc.player.inventory.getItem(slot))) {
+                return slot;
+            }
+        }
+        return -1;
+    }
 
     public static PlayerInfo info(PlayerEntity p) {
         return p != null && mc.getNetworkHandler() != null
@@ -967,7 +978,7 @@ public class Utils implements IMinecraftInstance {
     }
 
     public static String formatColor(String txt) {
-        return txt.replaceAll("&", "§");
+        return txt.replace('&', '§');
     }
 
     public static String getFirstColorCode(String input) {
@@ -1053,9 +1064,8 @@ public class Utils implements IMinecraftInstance {
                 && mc.getCurrentServerEntry() != null
                 && mc.getCurrentServerEntry().ip.contains("hypixel.net");
         if (!isHypixel) {
-            List<String> scoreboard = getSidebarLines();
-            isHypixel = !scoreboard.isEmpty()
-                    && stripString(scoreboard.get(scoreboard.size() - 1)).equals("www.hypixel.net");
+            String footer = getSidebarFooter();
+            isHypixel = footer != null && stripString(footer).equals("www.hypixel.net");
         }
 
         return isHypixel;
@@ -1209,7 +1219,10 @@ public class Utils implements IMinecraftInstance {
     }
 
     public static int getSkyWarsStatus() {
-        List<String> sidebar = getSidebarLines();
+        return getSkyWarsStatus(getSidebarLines());
+    }
+
+    public static int getSkyWarsStatus(List<String> sidebar) {
         if (sidebar.isEmpty()) {
             return -1;
         }
@@ -1251,8 +1264,16 @@ public class Utils implements IMinecraftInstance {
         }
 
         ScoreboardObjective objective = scoreboard.getDisplayObjective(1);
-        if (objective != null && stripString(objective.getDisplayName()).contains("BED WARS")) {
-            for (String line : getSidebarLines()) {
+        if (objective != null) {
+            String title = objective.getDisplayName();
+            if (!stripString(title).contains("BED WARS")) {
+                return -1;
+            }
+            List<String> lines = readSidebarLines(scoreboard, reverseSidebarScores(scoreboard, objective), title);
+            if (lines.size() == 1) {
+                return -1;
+            }
+            for (String line : lines) {
                 line = stripString(line);
                 String[] parts = line.split("  ");
                 if (parts.length <= 1) {
@@ -1290,49 +1311,68 @@ public class Utils implements IMinecraftInstance {
     }
 
     public static List<String> getSidebarLines() {
-        List<String> lines = new ArrayList<>();
-        if (mc.world == null) {
-            return lines;
-        }
+        List<String> lines = getSidebarLinesWithTitle();
+        return lines == null || lines.size() == 1 ? new ArrayList<>() : lines;
+    }
 
-        Scoreboard scoreboard = mc.world.getScoreboard();
-        if (scoreboard == null) {
-            return lines;
-        }
-
-        ScoreboardObjective objective = scoreboard.getDisplayObjective(1);
+    /** Null without an objective; otherwise the title followed by up to 15 visible rows. */
+    public static List<String> getSidebarLinesWithTitle() {
+        Scoreboard scoreboard = mc.world == null ? null : mc.world.getScoreboard();
+        ScoreboardObjective objective = scoreboard == null ? null : scoreboard.getDisplayObjective(1);
         if (objective == null) {
-            return lines;
+            return null;
         }
+        return readSidebarLines(scoreboard, reverseSidebarScores(scoreboard, objective), objective.getDisplayName());
+    }
 
-        Collection<ScoreboardScore> scores = scoreboard.getScores(objective);
-        List<ScoreboardScore> list = new ArrayList<>();
-
-        for (ScoreboardScore input : scores) {
-            if (input != null && input.getOwner() != null && !input.getOwner().startsWith("#")) {
-                list.add(input);
+    private static List<String> readSidebarLines(
+            Scoreboard scoreboard, ListIterator<ScoreboardScore> rows, String title) {
+        List<String> lines = new ArrayList<>(16);
+        lines.add(title);
+        while (rows.hasPrevious() && lines.size() < 16) {
+            ScoreboardScore score = rows.previous();
+            String owner = score == null ? null : score.getOwner();
+            if (owner != null && !owner.startsWith("#")) {
+                lines.add(Team.getMemberDisplayName(scoreboard.getTeamOfMember(owner), owner));
             }
         }
-
-        if (list.size() > 15) {
-            scores = new ArrayList<>(Lists.newArrayList(Iterables.skip(list, list.size() - 15)));
-        } else {
-            scores = list;
-        }
-
-        int index = 0;
-
-        for (ScoreboardScore score : scores) {
-            index++;
-            Team team = scoreboard.getTeamOfMember(score.getOwner());
-            lines.add(Team.getMemberDisplayName(team, score.getOwner()));
-            if (index == scores.size()) {
-                lines.add(objective.getDisplayName());
-            }
-        }
-
-        Collections.reverse(lines);
         return lines;
+    }
+
+    private static ListIterator<ScoreboardScore> reverseSidebarScores(
+            Scoreboard scoreboard, ScoreboardObjective objective) {
+        Collection<ScoreboardScore> scores = scoreboard.getScores(objective);
+        List<ScoreboardScore> ordered =
+                scores instanceof List ? (List<ScoreboardScore>) scores : new ArrayList<>(scores);
+        return ordered.listIterator(ordered.size());
+    }
+
+    private static String getSidebarFooter() {
+        Scoreboard scoreboard = mc.world == null ? null : mc.world.getScoreboard();
+        ScoreboardObjective objective = scoreboard == null ? null : scoreboard.getDisplayObjective(1);
+        if (objective == null) {
+            return null;
+        }
+        ListIterator<ScoreboardScore> rows = reverseSidebarScores(scoreboard, objective);
+        String footerOwner = null;
+        int visibleRows = 0;
+        while (rows.hasPrevious() && visibleRows < 15) {
+            ScoreboardScore score = rows.previous();
+            String owner = score == null ? null : score.getOwner();
+            if (owner != null && !owner.startsWith("#")) {
+                footerOwner = owner;
+                visibleRows++;
+            }
+        }
+        return footerOwner == null
+                ? null
+                : Team.getMemberDisplayName(scoreboard.getTeamOfMember(footerOwner), footerOwner);
+    }
+
+    public static boolean sidebarTitleContainsBedWars() {
+        Scoreboard scoreboard = mc.world == null ? null : mc.world.getScoreboard();
+        ScoreboardObjective objective = scoreboard == null ? null : scoreboard.getDisplayObjective(1);
+        return objective != null && stripString(objective.getDisplayName()).contains("BED WARS");
     }
 
     public static Random getRandom() {

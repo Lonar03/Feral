@@ -5,7 +5,9 @@ import keystrokesmod.platform.ornithe.ForgeEvents;
 import keystrokesmod.platform.ornithe.ForgeEvents.EventPriority;
 import keystrokesmod.platform.ornithe.ForgeEvents.RenderLivingEvent.Specials.Pre;
 import keystrokesmod.platform.ornithe.ForgeEvents.SubscribeEvent;
+import keystrokesmod.utility.OverlayEntityScans;
 import keystrokesmod.utility.Utils;
+import keystrokesmod.utility.WorldEntityScan.Kind;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.render.TextRenderer;
 import net.minecraft.client.render.entity.EntityRenderDispatcher;
@@ -41,7 +43,7 @@ public class HoloVis extends Module {
 
         EntityRenderDispatcher rm = mc.getEntityRenderDispatcher();
         float partialTicks = event.partialTicks;
-        for (Entity entity : mc.world.entities) {
+        for (Entity entity : OverlayEntityScans.render(event, mc, Kind.ARMOR_STANDS)) {
             if (!(entity instanceof ArmorStandEntity) || !isHologram((ArmorStandEntity) entity)) {
                 continue;
             }

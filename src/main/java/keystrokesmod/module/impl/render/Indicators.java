@@ -38,6 +38,7 @@ public class Indicators extends Module {
     private ButtonSetting renderFireballs;
     private ButtonSetting renderEggs;
     private ButtonSetting renderSnowballs;
+    private final RenderUtils.DirectionalGeometry geometry = new RenderUtils.DirectionalGeometry();
     private SliderSetting arrow;
     private SliderSetting radius;
     private SliderSetting scale;
@@ -184,69 +185,46 @@ public class Indicators extends Module {
                 if (!this.renderOnlyOffScreen.isToggled() || !RenderUtils.isInViewFrustum(en)) {
                     Color colorForStack = this.getColorForItem(itemStack);
                     int color = this.itemColors.isToggled() ? colorForStack.getRGB() : -1;
-                    double x = en.prevX + (en.x - en.prevX) * partialTicks - mc.getEntityRenderDispatcher().cameraX;
-                    double y = en.prevY
-                            + (en.y - en.prevY) * partialTicks
-                            - mc.getEntityRenderDispatcher().cameraY
-                            + en.height / 2.0F;
-                    double z = en.prevZ + (en.z - en.prevZ) * partialTicks - mc.getEntityRenderDispatcher().cameraZ;
+                    RenderUtils.DirectionalGeometry geometry = this.geometry;
+                    geometry.interpolate(en, partialTicks);
                     Window scaledResolution = new Window(mc);
                     boolean render3D = this.tiltArrow.isToggled();
                     Vec3d vec = null;
                     if (!render3D) {
                         ((IAccessorEntityRenderer) mc.gameRenderer)
                                 .callSetupCameraTransform(((IAccessorMinecraft) mc).getTimer().partialTick, 0);
-                        vec = RenderUtils.convertTo2D(scaledResolution.getScale(), x, y, z);
+                        vec = RenderUtils.convertTo2D(scaledResolution.getScale(), geometry.x, geometry.y, geometry.z);
                     }
 
                     if (render3D || vec != null) {
                         mc.gameRenderer.setupGuiState();
                         Window res = new Window(mc);
-                        boolean inFrustum = false;
-                        double dx;
-                        double dy;
-                        if (render3D) {
-                            double angle = Math.atan2(z, x)
-                                    - (Math.PI / 2)
-                                    - Math.toRadians(mc.getEntityRenderDispatcher().cameraYaw);
-                            dx = Math.sin(angle);
-                            dy = -Math.cos(angle);
-                        } else {
-                            dx = vec.x - res.getWidth() / 2.0;
-                            dy = vec.y - res.getHeight() / 2.0;
-                            inFrustum = vec.z < 1.0003684;
-                            if (!inFrustum) {
-                                dx *= -1.0;
-                                dy *= -1.0;
-                            }
-                        }
-
-                        double angle1 = Math.atan2(dx, dy);
-                        double angle2 = Math.atan2(dy, dx) * (float) (180.0 / Math.PI) + 90.0;
-                        double hypotenuse = Math.hypot(dx, dy);
+                        geometry.direction(
+                                render3D,
+                                vec,
+                                res.getWidth(),
+                                res.getHeight(),
+                                render3D ? mc.getEntityRenderDispatcher().cameraYaw : 0.0F);
                         double radiusInput = this.radius.getInput();
                         double scaleInput = this.scale.getInput();
                         if (this.renderItem.isToggled()) {
                             radiusInput += 20.0;
                         }
 
-                        if (inFrustum && hypotenuse < radiusInput + 15.0 * scaleInput) {
+                        if (geometry.inFrustum && geometry.hypotenuse < radiusInput + 15.0 * scaleInput) {
                             return;
                         }
 
-                        double baseX = res.getWidth() / 2.0;
-                        double baseY = res.getHeight() / 2.0;
-                        double sinAng = Math.sin(angle1);
-                        double cosAng = Math.cos(angle1);
-                        float tilt =
-                                render3D ? 90.0F - Math.max(30.0F, mc.getEntityRenderDispatcher().cameraPitch) : 0.0F;
+                        geometry.preparePlacement(res.getWidth(), res.getHeight());
+                        float tilt = RenderUtils.DirectionalGeometry.tilt(
+                                render3D, render3D ? mc.getEntityRenderDispatcher().cameraPitch : 0.0F);
                         double verticalScale = Math.cos(Math.toRadians(tilt));
-                        double renderX = baseX + radiusInput * sinAng;
-                        double renderY = baseY + radiusInput * cosAng * verticalScale;
+                        double renderX = geometry.x(radiusInput);
+                        double renderY = geometry.y(radiusInput, verticalScale);
                         GlStateManager.pushMatrix();
                         GlStateManager.translated(renderX, renderY, 0.0);
                         GlStateManager.rotatef(tilt, 1.0F, 0.0F, 0.0F);
-                        GlStateManager.rotatef((float) angle2, 0.0F, 0.0F, 1.0F);
+                        GlStateManager.rotatef((float) geometry.rotation, 0.0F, 0.0F, 1.0F);
                         GlStateManager.scaled(scaleInput, scaleInput, scaleInput);
                         int arrowInput = (int) this.arrow.getInput();
                         if (arrowInput == 0) {
@@ -285,8 +263,8 @@ public class Indicators extends Module {
                         }
 
                         GlStateManager.popMatrix();
-                        renderX = baseX + (radiusInput - 13.0 * scaleInput) * sinAng;
-                        renderY = baseY + (radiusInput - 13.0 * scaleInput) * cosAng * verticalScale;
+                        renderX = geometry.x(radiusInput - 13.0 * scaleInput);
+                        renderY = geometry.y(radiusInput - 13.0 * scaleInput, verticalScale);
                         GlStateManager.pushMatrix();
                         GlStateManager.translated(renderX, renderY, 0.0);
                         GlStateManager.scaled(0.8 * scaleInput, 0.8 * scaleInput, 0.8 * scaleInput);
@@ -300,17 +278,15 @@ public class Indicators extends Module {
                         if (this.renderItem.isToggled() && itemStack != null) {
                             GlStateManager.pushMatrix();
                             if (itemStack.getItem() == Items.ARROW) {
-                                renderX = baseX + (radiusInput - 26.0 * Math.max(1.0, scaleInput)) * sinAng;
-                                renderY = baseY
-                                        + (radiusInput - 26.0 * Math.max(1.0, scaleInput)) * cosAng * verticalScale;
+                                renderX = geometry.x(radiusInput - 26.0 * Math.max(1.0, scaleInput));
+                                renderY = geometry.y(radiusInput - 26.0 * Math.max(1.0, scaleInput), verticalScale);
                                 GlStateManager.translated(renderX, renderY, 0.0);
                                 GlStateManager.scalef(1.0F, 1.0F, 1.0F);
-                                GlStateManager.rotatef((float) angle2 - 45.0F, 0.0F, 0.0F, 1.0F);
+                                GlStateManager.rotatef((float) geometry.rotation - 45.0F, 0.0F, 0.0F, 1.0F);
                                 mc.getItemRenderer().renderGuiItemModel(itemStack, -12, -4);
                             } else {
-                                renderX = baseX + (radiusInput - 29.0 * Math.max(1.0, scaleInput)) * sinAng;
-                                renderY = baseY
-                                        + (radiusInput - 29.0 * Math.max(1.0, scaleInput)) * cosAng * verticalScale;
+                                renderX = geometry.x(radiusInput - 29.0 * Math.max(1.0, scaleInput));
+                                renderY = geometry.y(radiusInput - 29.0 * Math.max(1.0, scaleInput), verticalScale);
                                 GlStateManager.translated(renderX, renderY, 0.0);
                                 GlStateManager.scalef(1.0F, 1.0F, 1.0F);
                                 mc.getItemRenderer().renderGuiItemModel(itemStack, -8, -9);

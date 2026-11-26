@@ -8,7 +8,6 @@ import keystrokesmod.module.ModuleManager;
 import keystrokesmod.module.setting.impl.ButtonSetting;
 import keystrokesmod.platform.ornithe.ForgeEvents;
 import keystrokesmod.utility.Utils;
-import net.minecraft.entity.living.player.PlayerInventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
@@ -117,13 +116,7 @@ public class WaterBucket extends Module {
     }
 
     private int getWaterBucketSlot() {
-        for (int slot = 0; slot < PlayerInventory.getHotbarSize(); slot++) {
-            if (this.isItem(mc.player.inventory.getItem(slot), Items.WATER_BUCKET)) {
-                return slot;
-            }
-        }
-
-        return -1;
+        return Utils.findHotbarSlot(stack -> this.isItem(stack, Items.WATER_BUCKET));
     }
 
     private void useCurrentItem() {

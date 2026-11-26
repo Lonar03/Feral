@@ -9,12 +9,15 @@ import keystrokesmod.module.Module;
 import keystrokesmod.module.impl.player.Freecam;
 import keystrokesmod.module.setting.impl.ButtonSetting;
 import keystrokesmod.platform.ornithe.ForgeEvents;
+import keystrokesmod.utility.OverlayEntityScans;
 import keystrokesmod.utility.RenderUtils;
+import keystrokesmod.utility.WorldEntityScan.Kind;
 import net.minecraft.client.render.platform.GlStateManager;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.ItemEntity;
 import net.minecraft.entity.living.player.PlayerEntity;
 import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.MathHelper;
@@ -35,18 +38,29 @@ public class ItemESP extends Module {
         this.registerSetting(this.disableIron = new ButtonSetting("Disable iron", false));
     }
 
+    public boolean hasResourceOverlay() {
+        return !this.disableIron.isToggled()
+                || !this.disableGold.isToggled()
+                || !this.disableDiamond.isToggled()
+                || !this.disableEmerald.isToggled();
+    }
+
     @ForgeEvents.SubscribeEvent
     public void onRenderWorldLast(ForgeEvents.RenderWorldLastEvent e) {
+        if (!this.hasResourceOverlay()) {
+            return;
+        }
         HashMap<Item, ArrayList<ItemEntity>> itemsMap = new HashMap<>();
         HashMap<Double, Integer> colorMap = new HashMap<>();
 
-        for (Entity entity : mc.world.entities) {
+        for (Entity entity : OverlayEntityScans.render(e, mc, Kind.ITEMS)) {
             if (entity instanceof ItemEntity && entity.ticks >= 3) {
                 ItemEntity entityItem = (ItemEntity) entity;
-                if (entityItem.getItem().size != 0) {
-                    Item currentItem = entityItem.getItem().getItem();
+                ItemStack stack = entityItem.getItem();
+                if (stack.size != 0) {
+                    Item currentItem = stack.getItem();
                     if (currentItem != null) {
-                        int stackSize = entityItem.getItem().size;
+                        int stackSize = stack.size;
                         double colorDouble = this.getColorForItem(currentItem, entity.x, entity.y, entity.z);
                         Integer existingStackCount = colorMap.get(colorDouble);
                         int newStackCount;
@@ -54,11 +68,11 @@ public class ItemESP extends Module {
                             newStackCount = stackSize;
                             ArrayList<ItemEntity> itemList = itemsMap.get(currentItem);
                             if (itemList == null) {
-                                itemList = new ArrayList<>();
+                                itemList = new ArrayList<>(1);
+                                itemsMap.put(currentItem, itemList);
                             }
 
                             itemList.add(entityItem);
-                            itemsMap.put(currentItem, itemList);
                         } else {
                             newStackCount = existingStackCount + stackSize;
                         }

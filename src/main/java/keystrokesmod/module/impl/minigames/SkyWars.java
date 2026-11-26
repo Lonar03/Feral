@@ -92,11 +92,12 @@ public class SkyWars extends Module {
 
     @ForgeEvents.SubscribeEvent
     public void onPreUpdate(PreUpdateEvent e) {
-        if (this.strengthIndicator.isToggled()
-                && Utils.nullCheck()
-                && !this.strengthPlayers.isEmpty()
-                && Utils.getSkyWarsStatus() == 2) {
-            int customMode = this.getCustomMode();
+        if (this.strengthIndicator.isToggled() && Utils.nullCheck() && !this.strengthPlayers.isEmpty()) {
+            List<String> sidebar = Utils.getSidebarLines();
+            if (Utils.getSkyWarsStatus(sidebar) != 2) {
+                return;
+            }
+            int customMode = getCustomMode(sidebar);
             if (customMode != 2) {
                 isSkyWarsTeams = customMode == 1;
                 long duration = isSkyWarsTeams ? 2000L : 5000L;
@@ -122,8 +123,9 @@ public class SkyWars extends Module {
                             new Vec3d(mc.player.prevX, mc.player.prevY, mc.player.prevZ), System.currentTimeMillis());
                     this.thrownPearl = false;
                 } else {
-                    if (this.strengthIndicator.isToggled() && Utils.getSkyWarsStatus() == 2) {
-                        if (this.getCustomMode() == 2) {
+                    if (this.strengthIndicator.isToggled()) {
+                        List<String> sidebar = Utils.getSidebarLines();
+                        if (Utils.getSkyWarsStatus(sidebar) != 2 || getCustomMode(sidebar) == 2) {
                             return;
                         }
 
@@ -611,12 +613,7 @@ public class SkyWars extends Module {
                 && Utils.getSkyWarsStatus() == 2;
     }
 
-    public int getCustomMode() {
-        List<String> sidebar = Utils.getSidebarLines();
-        if (sidebar.isEmpty()) {
-            return -1;
-        }
-
+    private static int getCustomMode(List<String> sidebar) {
         for (String line : sidebar) {
             line = Utils.stripColor(line);
             if (line.startsWith("Teams left: ")) {
