@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import keystrokesmod.module.Module;
 import keystrokesmod.module.setting.impl.SliderSetting;
 import keystrokesmod.platform.ornithe.ForgeEvents;
+import keystrokesmod.utility.OverlayEntityScans;
 import keystrokesmod.utility.Utils;
 import keystrokesmod.utility.WorldEntityScan.Kind;
 import net.minecraft.client.render.TextRenderer;

@@ -10,6 +10,7 @@ import keystrokesmod.module.setting.impl.ButtonSetting;
 import keystrokesmod.module.setting.impl.ItemListSetting;
 import keystrokesmod.module.setting.impl.SliderSetting;
 import keystrokesmod.platform.ornithe.ForgeEvents;
+import keystrokesmod.utility.BlockCountHud;
 import keystrokesmod.utility.Timer;
 import keystrokesmod.utility.Utils;
 import net.minecraft.block.Block;

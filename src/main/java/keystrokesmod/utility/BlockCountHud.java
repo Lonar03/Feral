@@ -1,15 +1,14 @@
-package keystrokesmod.module.impl.player;
+package keystrokesmod.utility;
 
 import java.util.function.IntSupplier;
 import keystrokesmod.clickgui.HudPositionEditor;
-import keystrokesmod.utility.Utils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.render.Window;
 import net.minecraft.client.render.platform.GlStateManager;
 
 /** The independently positioned block counter shared by the player modules. */
-final class BlockCountHud {
+public final class BlockCountHud {
     private final Minecraft mc;
     private final IntSupplier count;
     private float posX = Float.NaN;
@@ -17,38 +16,38 @@ final class BlockCountHud {
     private float relativePosX = Float.NaN;
     private float relativePosY = Float.NaN;
 
-    BlockCountHud(Minecraft mc, IntSupplier count) {
+    public BlockCountHud(Minecraft mc, IntSupplier count) {
         this.mc = mc;
         this.count = count;
     }
 
-    float getPosX() {
+    public float getPosX() {
         syncPosition();
         return posX;
     }
 
-    float getPosY() {
+    public float getPosY() {
         syncPosition();
         return posY;
     }
 
-    float getRelativePosX() {
+    public float getRelativePosX() {
         syncPosition();
         return relativePosX;
     }
 
-    float getRelativePosY() {
+    public float getRelativePosY() {
         syncPosition();
         return relativePosY;
     }
 
-    void setRelativePosition(float normalizedX, float normalizedY) {
+    public void setRelativePosition(float normalizedX, float normalizedY) {
         relativePosX = normalizedX;
         relativePosY = normalizedY;
         syncPosition();
     }
 
-    void setAbsolutePosition(float absoluteX, float absoluteY) {
+    public void setAbsolutePosition(float absoluteX, float absoluteY) {
         setAbsolutePosition(absoluteX, absoluteY, new Window(mc));
     }
 
@@ -88,7 +87,7 @@ final class BlockCountHud {
         posY = relativePosY * h;
     }
 
-    void render(int alpha) {
+    public void render(int alpha) {
         render(alpha, false);
     }
 
@@ -118,7 +117,7 @@ final class BlockCountHud {
         GlStateManager.popMatrix();
     }
 
-    Screen editScreen() {
+    public Screen editScreen() {
         return new EditScreen();
     }
 

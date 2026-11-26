@@ -14,6 +14,7 @@ import keystrokesmod.module.setting.impl.ColorSetting;
 import keystrokesmod.module.setting.impl.DescriptionSetting;
 import keystrokesmod.module.setting.impl.SliderSetting;
 import keystrokesmod.platform.ornithe.ForgeEvents;
+import keystrokesmod.utility.OverlayEntityScans;
 import keystrokesmod.utility.RenderUtils;
 import keystrokesmod.utility.Utils;
 import keystrokesmod.utility.WorldEntityScan.Kind;
@@ -137,7 +138,7 @@ public class Nametags extends Module {
         }
     }
 
-    boolean showsMobs() {
+    public boolean showsMobs() {
         return this.showMobs.isToggled();
     }
 

@@ -1,8 +1,14 @@
-package keystrokesmod.module.impl.render;
+package keystrokesmod.utility;
 
 import java.util.List;
 import keystrokesmod.module.Module;
 import keystrokesmod.module.ModuleManager;
+import keystrokesmod.module.impl.render.DamageTags;
+import keystrokesmod.module.impl.render.HoloVis;
+import keystrokesmod.module.impl.render.ItemESP;
+import keystrokesmod.module.impl.render.MobESP;
+import keystrokesmod.module.impl.render.Nametags;
+import keystrokesmod.module.impl.render.TNTTimer;
 import keystrokesmod.platform.ornithe.ForgeEvents.RenderWorldLastEvent;
 import keystrokesmod.platform.ornithe.ForgeEvents.TickEvent.ClientTickEvent;
 import keystrokesmod.utility.WorldEntityScan.Kind;
@@ -11,10 +17,10 @@ import net.minecraft.entity.Entity;
 import net.minecraft.world.World;
 
 /** Plans shared discovery only. Each subscriber still reads entity properties in its own callback. */
-final class OverlayEntityScans {
+public final class OverlayEntityScans {
     private OverlayEntityScans() {}
 
-    static List<Entity> render(RenderWorldLastEvent event, Minecraft mc, Kind requested) {
+    public static List<Entity> render(RenderWorldLastEvent event, Minecraft mc, Kind requested) {
         World world = mc.world;
         if (world == null || mc.player == null) {
             // Bypass the shared path; the subscriber owns its normal null handling.
@@ -40,7 +46,7 @@ final class OverlayEntityScans {
                 : event.existingEntityCandidates(world, requested);
     }
 
-    static List<Entity> tick(ClientTickEvent event, Minecraft mc, Kind requested) {
+    public static List<Entity> tick(ClientTickEvent event, Minecraft mc, Kind requested) {
         World world = mc.world;
         int kinds = requested.bit();
         Module tags = ModuleManager.getModule(Nametags.class);

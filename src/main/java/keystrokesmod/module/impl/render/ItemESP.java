@@ -9,6 +9,7 @@ import keystrokesmod.module.Module;
 import keystrokesmod.module.impl.player.Freecam;
 import keystrokesmod.module.setting.impl.ButtonSetting;
 import keystrokesmod.platform.ornithe.ForgeEvents;
+import keystrokesmod.utility.OverlayEntityScans;
 import keystrokesmod.utility.RenderUtils;
 import keystrokesmod.utility.WorldEntityScan.Kind;
 import net.minecraft.client.render.platform.GlStateManager;
@@ -37,7 +38,7 @@ public class ItemESP extends Module {
         this.registerSetting(this.disableIron = new ButtonSetting("Disable iron", false));
     }
 
-    boolean hasResourceOverlay() {
+    public boolean hasResourceOverlay() {
         return !this.disableIron.isToggled()
                 || !this.disableGold.isToggled()
                 || !this.disableDiamond.isToggled()
