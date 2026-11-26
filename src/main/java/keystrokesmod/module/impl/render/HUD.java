@@ -397,7 +397,7 @@ public class HUD extends Module {
         if (module.isHidden()) {
             return true;
         } else {
-            return module == ModuleManager.commandLine ? true : module instanceof Velocity && removeVelocity;
+            return module instanceof Velocity && removeVelocity;
         }
     }
 
@@ -921,10 +921,7 @@ public class HUD extends Module {
 
         private boolean empty() {
             for (Module module : ModuleManager.organizedModules) {
-                if (module.isEnabled()
-                        && !module.getName().equals("HUD")
-                        && !module.isHidden()
-                        && module != ModuleManager.commandLine) {
+                if (module.isEnabled() && !module.getName().equals("HUD") && !module.isHidden()) {
                     return false;
                 }
             }

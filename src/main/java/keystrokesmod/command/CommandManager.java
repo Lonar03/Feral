@@ -11,6 +11,7 @@ import keystrokesmod.command.impl.Binds;
 import keystrokesmod.command.impl.Clear;
 import keystrokesmod.command.impl.Cname;
 import keystrokesmod.command.impl.Debug;
+import keystrokesmod.command.impl.Duels;
 import keystrokesmod.command.impl.Enemy;
 import keystrokesmod.command.impl.FakeChatCommand;
 import keystrokesmod.command.impl.Find;
@@ -28,6 +29,8 @@ import keystrokesmod.command.impl.Profiles;
 import keystrokesmod.command.impl.ResetGui;
 import keystrokesmod.command.impl.Rotate;
 import keystrokesmod.command.impl.Script;
+import keystrokesmod.command.impl.SetSpeed;
+import keystrokesmod.command.impl.SetVelocity;
 import keystrokesmod.command.impl.ShowAll;
 import keystrokesmod.command.impl.Time;
 import keystrokesmod.command.impl.Timer;
@@ -73,6 +76,9 @@ public class CommandManager {
         this.register(new Profiles());
         this.register(new ShowAll());
         this.register(new HideAll());
+        this.register(new Duels());
+        this.register(new SetSpeed());
+        this.register(new SetVelocity());
         // Zombies Aimbot: .crits, .predict, .ypredict
         for (Command command : keystrokesmod.module.impl.zombies.Aimbot.createCommands()) {
             this.register(command);
