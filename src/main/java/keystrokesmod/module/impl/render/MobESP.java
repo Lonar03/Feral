@@ -17,6 +17,7 @@ import keystrokesmod.module.setting.impl.SliderSetting;
 import keystrokesmod.platform.ornithe.ForgeEvents;
 import keystrokesmod.utility.RenderUtils;
 import keystrokesmod.utility.Utils;
+import keystrokesmod.utility.WorldEntityScan.Kind;
 import keystrokesmod.utility.shader.GlowShader;
 import keystrokesmod.utility.shader.OutlineShader;
 import net.minecraft.client.render.Window;
@@ -292,7 +293,7 @@ public class MobESP extends Module {
         if (Utils.nullCheck() && this.isEnabled()) {
             double maxDistSq = this.maxDistance.getInput() * this.maxDistance.getInput();
 
-            for (Entity entity : mc.world.entities) {
+            for (Entity entity : OverlayEntityScans.render(e, mc, Kind.LIVING)) {
                 if (entity instanceof LivingEntity && entity != mc.player) {
                     LivingEntity living = (LivingEntity) entity;
                     if (living.deathTicks == 0

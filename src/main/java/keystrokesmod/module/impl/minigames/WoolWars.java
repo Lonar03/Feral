@@ -19,10 +19,8 @@ import net.minecraft.block.AirBlock;
 import net.minecraft.block.Block;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.StairsBlock;
-import net.minecraft.entity.living.player.PlayerInventory;
 import net.minecraft.item.BlockItem;
 import net.minecraft.item.DyeColor;
-import net.minecraft.item.ItemStack;
 import net.minecraft.network.packet.c2s.play.PlayerHandActionC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerHandActionC2SPacket.Action;
 import net.minecraft.scoreboard.Scoreboard;
@@ -214,7 +212,8 @@ public class WoolWars extends Module {
 
         while (y > -1) {
             BlockPos pos = BlockUtils.pos(0.0, y, 0.0);
-            if (BlockUtils.getBlock(pos.add(0, 0, 2)) instanceof StairsBlock || this.isControlPointBlock(pos, false)) {
+            if (BlockUtils.getBlock(pos.add(0, 0, 2)) instanceof StairsBlock
+                    || isControlPointBlock(BlockUtils.getBlock(pos))) {
                 middlePos = pos;
                 break;
             }
@@ -226,7 +225,7 @@ public class WoolWars extends Module {
             for (int var5 = startY; var5 > -1; var5--) {
                 BlockPos pos = BlockUtils.pos(0.0, var5, 6.0);
                 if (BlockUtils.getBlock(pos.add(0, 0, 2)) instanceof StairsBlock
-                        || this.isControlPointBlock(pos, false)) {
+                        || isControlPointBlock(BlockUtils.getBlock(pos))) {
                     middlePos = pos;
                     break;
                 }
@@ -238,11 +237,26 @@ public class WoolWars extends Module {
 
     private List<BlockPos> getPossiblePos(BlockPos middlePos, boolean airOnly) {
         List<BlockPos> posList = new ArrayList<>();
+        DyeColor teamColor = null;
+        boolean teamColorResolved = false;
 
         for (int zOffset = -1; zOffset <= 1; zOffset++) {
             for (int xOffset = -1; xOffset <= 1; xOffset++) {
                 BlockPos pos = new BlockPos(middlePos.getX() + xOffset, middlePos.getY(), middlePos.getZ() + zOffset);
-                if (airOnly ? BlockUtils.getBlock(pos) instanceof AirBlock : this.isControlPointBlock(pos, true)) {
+                Block block = BlockUtils.getBlock(pos);
+                boolean matches;
+                if (airOnly) {
+                    matches = block instanceof AirBlock;
+                } else if (block == Blocks.WOOL) {
+                    if (!teamColorResolved) {
+                        teamColor = this.getTeamWoolColor();
+                        teamColorResolved = true;
+                    }
+                    matches = BlockUtils.getWoolColor(BlockUtils.getBlockState(pos)) != teamColor;
+                } else {
+                    matches = isControlPointBlock(block);
+                }
+                if (matches) {
                     posList.add(pos);
                 }
             }
@@ -269,29 +283,17 @@ public class WoolWars extends Module {
         return closestPos;
     }
 
-    private boolean isControlPointBlock(BlockPos pos, boolean verifyWoolColor) {
-        Block block = BlockUtils.getBlock(pos);
-        if (block != Blocks.WOOL) {
-            return block == Blocks.SNOW || block == Blocks.QUARTZ_BLOCK;
-        }
+    private static boolean isControlPointBlock(Block block) {
+        return block == Blocks.WOOL || block == Blocks.SNOW || block == Blocks.QUARTZ_BLOCK;
+    }
 
-        if (!verifyWoolColor) {
-            return true;
-        }
-
-        DyeColor teamColor = null;
-
-        for (int i = 0; i < PlayerInventory.getHotbarSize(); i++) {
-            ItemStack stack = mc.player.inventory.getItem(i);
-            if (stack != null
-                    && stack.getItem() instanceof BlockItem
-                    && ((BlockItem) stack.getItem()).getBlock() == Blocks.WOOL) {
-                teamColor = DyeColor.byId(stack.getMetadata());
-                break;
-            }
-        }
-
-        return BlockUtils.getWoolColor(BlockUtils.getBlockState(pos)) != teamColor;
+    private DyeColor getTeamWoolColor() {
+        int slot = Utils.findHotbarSlot(stack -> stack != null
+                && stack.getItem() instanceof BlockItem
+                && ((BlockItem) stack.getItem()).getBlock() == Blocks.WOOL);
+        return slot == -1
+                ? null
+                : DyeColor.byId(mc.player.inventory.getItem(slot).getMetadata());
     }
 
     private boolean isActiveRound() {
@@ -306,17 +308,9 @@ public class WoolWars extends Module {
     }
 
     public int getBlockSlot() {
-        for (int slot = 0; slot < PlayerInventory.getHotbarSize(); slot++) {
-            ItemStack stack = mc.player.inventory.getItem(slot);
-            if (stack != null && stack.getItem() instanceof BlockItem) {
-                Block block = ((BlockItem) stack.getItem()).getBlock();
-                if (BlockUtils.isNormalBlock(block)) {
-                    return slot;
-                }
-            }
-        }
-
-        return -1;
+        return Utils.findHotbarSlot(stack -> stack != null
+                && stack.getItem() instanceof BlockItem
+                && BlockUtils.isNormalBlock(((BlockItem) stack.getItem()).getBlock()));
     }
 
     @ForgeEvents.SubscribeEvent

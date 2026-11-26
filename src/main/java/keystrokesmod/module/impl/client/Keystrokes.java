@@ -147,10 +147,7 @@ public class Keystrokes extends Module {
 
         // Bound keys follow the binding state, so a module holding/releasing the key (AutoClicker releases attack
         // while you hold LMB) shows what the game actually gets.
-        boolean held = hasBinding(keyCode)
-                ? KeyInputTracker.isBindingDown(keyCode)
-                : KeyInputTracker.isPhysicallyDown(keyCode);
-        return held
+        return KeyInputTracker.isBindingOrPhysicalDown(keyCode)
                 || System.currentTimeMillis() - KeyInputTracker.getLastPress(keyCode) < PRESS_FLASH_MS
                 || this.isModuleHeld(keyCode);
     }
@@ -182,16 +179,6 @@ public class Keystrokes extends Module {
                 || keyCode == settings.sneakKey.getKeyCode() && input.sneaking;
     }
 
-    private static boolean hasBinding(int keyCode) {
-        for (KeyBinding binding : mc.options.keyBindings) {
-            if (binding.getKeyCode() == keyCode) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     private int getCps(boolean left) {
         KeyBinding binding = left ? mc.options.attackKey : mc.options.useKey;
         return KeyInputTracker.getCps(binding.getKeyCode(), this.physicalOnly.isToggled());
@@ -205,33 +192,22 @@ public class Keystrokes extends Module {
 
     /** Bottom of the built-in rows in overlay space; custom key offsets are relative to (0, this). */
     private int getRowsEnd() {
-        return this.getRowsEnd(
-                this.showWasd.isToggled(),
-                this.showMouse.isToggled(),
-                this.showSneak.isToggled(),
-                this.showSpace.isToggled(),
-                this.showCps.isToggled() && !(this.showMouse.isToggled() && this.cpsOnButtons.isToggled()),
-                this.showFps.isToggled(),
-                this.showPing.isToggled());
-    }
-
-    private int getRowsEnd(
-            boolean wasd, boolean mouse, boolean sneaking, boolean space, boolean cpsRow, boolean fps, boolean ping) {
         int y = 2;
-        if (wasd) y += 48;
+        if (this.showWasd.isToggled()) y += 48;
+        boolean mouse = this.showMouse.isToggled();
         if (mouse) y += 24;
-        if (sneaking) y += ROW + 2;
-        if (space) y += ROW + 2;
-        if (cpsRow) y += ROW + 2;
-        if (fps) y += ROW + 2;
-        if (ping) y += ROW + 2;
+        if (this.showSneak.isToggled()) y += ROW + 2;
+        if (this.showSpace.isToggled()) y += ROW + 2;
+        if (this.showCps.isToggled() && !(mouse && this.cpsOnButtons.isToggled())) y += ROW + 2;
+        if (this.showFps.isToggled()) y += ROW + 2;
+        if (this.showPing.isToggled()) y += ROW + 2;
         return y;
     }
 
     /** Overlay-space bounds of everything drawn: {minX, minY, maxX, maxY}. */
     private float[] getLocalBounds() {
-        float minX = 0, minY = 0, maxX = WIDTH, maxY = Math.max(this.getRowsEnd(), 4);
         int base = this.getRowsEnd();
+        float minX = 0, minY = 0, maxX = WIDTH, maxY = Math.max(base, 4);
         for (CustomKey key : this.customKeys) {
             minX = Math.min(minX, (float) key.x);
             minY = Math.min(minY, (float) (base + key.y));
@@ -245,7 +221,10 @@ public class Keystrokes extends Module {
     /** Screen position of the overlay origin, kept on screen. */
     private float[] getScreenOrigin(Window res) {
         float s = this.getScale();
-        float[] b = this.getLocalBounds();
+        return this.getScreenOrigin(res, s, this.getLocalBounds());
+    }
+
+    private float[] getScreenOrigin(Window res, float s, float[] b) {
         float x = this.relX * res.getWidth();
         float y = this.relY * res.getHeight();
         x = Math.max(-b[0] * s, Math.min(x, res.getWidth() - b[2] * s));
@@ -754,9 +733,9 @@ public class Keystrokes extends Module {
 
         private float[] getScreenBounds() {
             Window res = new Window(this.minecraft);
-            float[] origin = Keystrokes.this.getScreenOrigin(res);
-            float[] b = Keystrokes.this.getLocalBounds();
             float s = Keystrokes.this.getScale();
+            float[] b = Keystrokes.this.getLocalBounds();
+            float[] origin = Keystrokes.this.getScreenOrigin(res, s, b);
             return new float[] {origin[0] + b[0] * s, origin[1] + b[1] * s, origin[0] + b[2] * s, origin[1] + b[3] * s};
         }
 

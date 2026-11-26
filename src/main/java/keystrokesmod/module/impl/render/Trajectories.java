@@ -32,8 +32,6 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.item.PotionItem;
 import net.minecraft.network.packet.s2c.play.EntityVelocityS2CPacket;
-import net.minecraft.scoreboard.Scoreboard;
-import net.minecraft.scoreboard.ScoreboardObjective;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.BlockPos.Mutable;
 import net.minecraft.util.math.Box;
@@ -225,18 +223,7 @@ public class Trajectories extends Module {
     }
 
     private boolean isHypixelBedwars() {
-        if (Utils.isHypixel() && mc.world != null) {
-            Scoreboard sb = mc.world.getScoreboard();
-            if (sb == null) {
-                return false;
-            }
-
-            ScoreboardObjective objective = sb.getDisplayObjective(1);
-            return objective != null
-                    && Utils.stripString(objective.getDisplayName()).contains("BED WARS");
-        } else {
-            return false;
-        }
+        return Utils.isHypixel() && Utils.sidebarTitleContainsBedWars();
     }
 
     private boolean isBedbugSnowball(ItemStack stack) {

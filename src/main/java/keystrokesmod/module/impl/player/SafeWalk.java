@@ -128,34 +128,26 @@ public class SafeWalk extends Module {
             return false;
         }
 
-        if (disableOnForward.isToggled() && Keyboard.isKeyDown(mc.options.forwardKey.getKeyCode())) {
-            return false;
-        }
-
-        if (pitchCheck.isToggled() && mc.player.pitch < 70.0F) {
-            return false;
-        }
-
-        if (blocksOnly.isToggled()) {
-            ItemStack held = mc.player.getDisplayItemInHand();
-            if (held == null || !(held.getItem() instanceof BlockItem)) {
-                return false;
-            }
-        }
-
-        return true;
+        return forwardAllowed() && pitchAllowed() && heldItemAllowed();
     }
 
     private boolean settingsMet() {
-        if (blocksOnly.isToggled()) {
-            ItemStack held = mc.player.getDisplayItemInHand();
-            if (held == null || !(held.getItem() instanceof BlockItem)) {
-                return false;
-            }
-        }
+        return heldItemAllowed() && forwardAllowed() && pitchAllowed();
+    }
 
-        return disableOnForward.isToggled() && Keyboard.isKeyDown(mc.options.forwardKey.getKeyCode())
-                ? false
-                : !pitchCheck.isToggled() || !(mc.player.pitch < 70.0F);
+    private static boolean heldItemAllowed() {
+        if (!blocksOnly.isToggled()) {
+            return true;
+        }
+        ItemStack held = mc.player.getDisplayItemInHand();
+        return held != null && held.getItem() instanceof BlockItem;
+    }
+
+    private static boolean forwardAllowed() {
+        return !disableOnForward.isToggled() || !Keyboard.isKeyDown(mc.options.forwardKey.getKeyCode());
+    }
+
+    private static boolean pitchAllowed() {
+        return !pitchCheck.isToggled() || !(mc.player.pitch < 70.0F);
     }
 }

@@ -1409,13 +1409,7 @@ public class AutoLadder extends Module {
             return -1;
         }
 
-        for (int slot = 0; slot < 9; slot++) {
-            if (this.isLadderStack(mc.player.inventory.getItem(slot))) {
-                return slot;
-            }
-        }
-
-        return -1;
+        return Utils.findHotbarSlot(this::isLadderStack);
     }
 
     private int findSupportSlot() {
@@ -1423,13 +1417,7 @@ public class AutoLadder extends Module {
             return -1;
         }
 
-        for (int slot = 0; slot < 9; slot++) {
-            if (this.isSupportBlockStack(mc.player.inventory.getItem(slot))) {
-                return slot;
-            }
-        }
-
-        return -1;
+        return Utils.findHotbarSlot(this::isSupportBlockStack);
     }
 
     private boolean isLadderStack(ItemStack stack) {

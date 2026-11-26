@@ -1,6 +1,5 @@
 package keystrokesmod.module.impl.other;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import keystrokesmod.clickgui.ClickGui;
@@ -28,9 +27,6 @@ import net.minecraft.entity.living.player.PlayerEntity;
 import net.minecraft.item.BlockItem;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
-import net.minecraft.scoreboard.Scoreboard;
-import net.minecraft.scoreboard.ScoreboardObjective;
-import net.minecraft.scoreboard.ScoreboardScore;
 import net.minecraft.scoreboard.team.Team;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
@@ -146,36 +142,7 @@ final class AnticheatContext implements IMinecraftInstance {
     }
 
     public static List<String> sidebar() {
-        if (mc.world == null) {
-            return null;
-        }
-
-        Scoreboard sb = mc.world.getScoreboard();
-        if (sb == null) {
-            return null;
-        }
-
-        ScoreboardObjective obj = sb.getDisplayObjective(1);
-        if (obj == null) {
-            return null;
-        }
-
-        ArrayList<ScoreboardScore> scores = new ArrayList<>(sb.getScores(obj));
-        ArrayList<String> out = new ArrayList<>(10);
-        out.add(obj.getDisplayName());
-        int n = 0;
-
-        for (int i = scores.size() - 1; i >= 0 && n < 15; i--) {
-            ScoreboardScore s = scores.get(i);
-            String name;
-            if (s != null && (name = s.getOwner()) != null && !name.startsWith("#")) {
-                Team team = sb.getTeamOfMember(name);
-                out.add(Team.getMemberDisplayName(team, name));
-                n++;
-            }
-        }
-
-        return out;
+        return Utils.getSidebarLinesWithTitle();
     }
 
     public static AnticheatContext.State detect() {

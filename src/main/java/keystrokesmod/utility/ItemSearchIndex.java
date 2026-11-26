@@ -41,32 +41,7 @@ public final class ItemSearchIndex {
                 if (!isCoveredBySetting(entry, setting)) {
                     String displayNameLower = entry.displayName.toLowerCase();
                     String searchId = getSearchId(entry.storageId).toLowerCase();
-                    int score = 0;
-                    if (displayNameLower.equals(lowerQuery)) {
-                        score = 1000;
-                    } else if (searchId.equals(lowerQuery)) {
-                        score = 900;
-                    } else if (displayNameLower.startsWith(lowerQuery)) {
-                        score = 800;
-                    } else if (searchId.startsWith(lowerQuery)) {
-                        score = 700;
-                    } else {
-                        String[] tokens = displayNameLower.split("\\s+");
-
-                        for (String token : tokens) {
-                            if (token.startsWith(lowerQuery)) {
-                                score = 600;
-                                break;
-                            }
-                        }
-
-                        if (score == 0 && displayNameLower.contains(lowerQuery)) {
-                            score = 500;
-                        } else if (score == 0 && searchId.contains(lowerQuery)) {
-                            score = 400;
-                        }
-                    }
-
+                    int score = SearchRanking.score(displayNameLower, searchId, lowerQuery);
                     if (score > 0) {
                         scored.add(new ItemSearchIndex.ScoredItem(entry, score));
                     }
@@ -76,36 +51,22 @@ public final class ItemSearchIndex {
             scored.sort(Comparator.<ItemSearchIndex.ScoredItem>comparingInt(scoredItemx -> -scoredItemx.score)
                     .thenComparing(scoredItemx -> scoredItemx.entry.displayName, String.CASE_INSENSITIVE_ORDER)
                     .thenComparing(scoredItemx -> scoredItemx.entry.storageId));
-            Map<String, Integer> bestScoreByRegistry = new HashMap<>();
-
-            for (ItemSearchIndex.ScoredItem scoredItem : scored) {
-                String registryId = getRegistryId(scoredItem.entry.storageId);
-                if (registryId != null) {
-                    Integer currentBest = bestScoreByRegistry.get(registryId);
-                    if (currentBest == null || currentBest < scoredItem.score) {
-                        bestScoreByRegistry.put(registryId, scoredItem.score);
-                    }
-                }
-            }
-
             List<ItemSearchIndex.GroupedItemResult> results = new ArrayList<>();
             Set<String> seen = new HashSet<>();
 
+            // The first hit in each registry group already has its highest score.
             for (ItemSearchIndex.ScoredItem scoredItem : scored) {
                 String registryId = getRegistryId(scoredItem.entry.storageId);
                 if (registryId != null && seen.add(registryId)) {
                     List<ItemSearchIndex.ItemEntry> variants = getVariants(registryId);
                     if (!variants.isEmpty()) {
-                        int groupScore = bestScoreByRegistry.containsKey(registryId)
-                                ? bestScoreByRegistry.get(registryId)
-                                : scoredItem.score;
                         results.add(new ItemSearchIndex.GroupedItemResult(
                                 registryId,
                                 variants,
-                                groupScore,
+                                scoredItem.score,
                                 getGroupDisplayName(registryId, variants),
                                 getAllSelectionStorageId(registryId)));
-                        if (results.size() >= 100) {
+                        if (results.size() >= MAX_SEARCH_RESULTS) {
                             break;
                         }
                     }

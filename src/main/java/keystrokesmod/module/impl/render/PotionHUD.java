@@ -6,18 +6,16 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import keystrokesmod.clickgui.HudPositionEditor;
 import keystrokesmod.module.Module;
 import keystrokesmod.module.setting.impl.ButtonSetting;
 import keystrokesmod.module.setting.impl.PotionListSetting;
 import keystrokesmod.module.setting.impl.SliderSetting;
-import keystrokesmod.platform.ClientPlatform;
 import keystrokesmod.platform.ornithe.ForgeEvents;
 import keystrokesmod.utility.RenderUtils;
 import keystrokesmod.utility.Utils;
 import keystrokesmod.utility.font.FeralFontRenderer;
 import keystrokesmod.utility.font.FontManager;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.render.Window;
 import net.minecraft.entity.living.effect.StatusEffect;
 import net.minecraft.entity.living.effect.StatusEffectInstance;
@@ -360,93 +358,52 @@ public class PotionHUD extends Module {
         }
     }
 
-    private class EditScreen extends Screen {
-        private ButtonWidget resetPosition;
-        private boolean dragging;
+    private class EditScreen extends HudPositionEditor {
         private float minX;
         private float minY;
         private float maxX;
         private float maxY;
-        private float actualX;
-        private float actualY;
-        private float lastActualX;
-        private float lastActualY;
-        private int lastMouseX;
-        private int lastMouseY;
 
-        private EditScreen() {}
-
-        public void init() {
-            super.init();
-            this.buttons.add(
-                    this.resetPosition =
-                            new ButtonWidget(1, this.width - 90, this.height - 25, 85, 20, "Reset position"));
-            PotionHUD.this.syncPositionToResolution(new Window(this.minecraft));
-            this.actualX = PotionHUD.this.posX;
-            this.actualY = PotionHUD.this.posY;
+        private EditScreen() {
+            super("Edit the HUD position by dragging.", 20);
         }
 
-        public void render(int mouseX, int mouseY, float partialTicks) {
-            Window resolution = new Window(this.minecraft);
-            if (!this.dragging) {
-                PotionHUD.this.syncPositionToResolution(resolution);
-                this.actualX = PotionHUD.this.posX;
-                this.actualY = PotionHUD.this.posY;
-            }
+        @Override
+        protected void syncAnchor(Window window) {
+            PotionHUD.this.syncPositionToResolution(window);
+        }
 
-            fill(0, 0, this.width, this.height, -1308622848);
-            PotionHUD.this.setAbsolutePosition(this.actualX, this.actualY, resolution);
+        @Override
+        protected float anchorX() {
+            return PotionHUD.this.posX;
+        }
+
+        @Override
+        protected float anchorY() {
+            return PotionHUD.this.posY;
+        }
+
+        @Override
+        protected void drawPreview(float x, float y, Window window) {
+            PotionHUD.this.setAbsolutePosition(x, y, window);
             PotionHUD.RenderState state = PotionHUD.this.buildRenderState(true);
-            PotionHUD.this.adjustAnchorForLayoutChanges(resolution, state);
+            PotionHUD.this.adjustAnchorForLayoutChanges(window, state);
             PotionHUD.Bounds bounds = PotionHUD.this.renderState(state);
             PotionHUD.this.drawBounds(bounds);
             this.minX = bounds.left;
             this.minY = bounds.top;
             this.maxX = bounds.right;
             this.maxY = bounds.bottom;
-            this.actualX = PotionHUD.this.posX;
-            this.actualY = PotionHUD.this.posY;
-            String message = "Edit the HUD position by dragging.";
-            int textX = resolution.getWidth() / 2 - this.textRenderer.getWidth(message) / 2;
-            int textY = resolution.getHeight() / 2 - 20;
-            RenderUtils.drawColoredString(message, '-', textX, textY, 2L, 0L, true, this.minecraft.textRenderer);
-            ClientPlatform.handleInput(this);
-            super.render(mouseX, mouseY, partialTicks);
         }
 
-        protected void mouseDragged(int mouseX, int mouseY, int button, long timeSinceLastClick) {
-            super.mouseDragged(mouseX, mouseY, button, timeSinceLastClick);
-            if (button == 0) {
-                if (this.dragging) {
-                    this.actualX = this.lastActualX + (mouseX - this.lastMouseX);
-                    this.actualY = this.lastActualY + (mouseY - this.lastMouseY);
-                } else if (mouseX >= this.minX && mouseX <= this.maxX && mouseY >= this.minY && mouseY <= this.maxY) {
-                    this.dragging = true;
-                    this.lastMouseX = mouseX;
-                    this.lastMouseY = mouseY;
-                    this.lastActualX = this.actualX;
-                    this.lastActualY = this.actualY;
-                }
-            }
+        @Override
+        protected boolean hitsPreview(int mouseX, int mouseY) {
+            return mouseX >= this.minX && mouseX <= this.maxX && mouseY >= this.minY && mouseY <= this.maxY;
         }
 
-        protected void mouseReleased(int mouseX, int mouseY, int state) {
-            super.mouseReleased(mouseX, mouseY, state);
-            if (state == 0) {
-                this.dragging = false;
-            }
-        }
-
-        public void buttonClicked(ButtonWidget button) {
-            if (button == this.resetPosition) {
-                PotionHUD.this.resetPosition();
-                this.actualX = PotionHUD.this.posX;
-                this.actualY = PotionHUD.this.posY;
-            }
-        }
-
-        public boolean shouldPauseGame() {
-            return false;
+        @Override
+        protected void resetAnchor() {
+            PotionHUD.this.resetPosition();
         }
     }
 

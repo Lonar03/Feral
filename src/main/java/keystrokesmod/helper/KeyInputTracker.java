@@ -129,19 +129,23 @@ public final class KeyInputTracker {
         return keyCode > 0 && keyCode < Keyboard.KEYBOARD_SIZE && Keyboard.isKeyDown(keyCode);
     }
 
-    /** True when any key binding on this key code is held, which includes states set by modules. */
-    public static boolean isBindingDown(int keyCode) {
+    /** Bound codes use their binding state; only unbound codes fall back to physical input. */
+    public static boolean isBindingOrPhysicalDown(int keyCode) {
         if (keyCode == 0) {
             return false;
         }
 
+        boolean bound = false;
         for (KeyBinding binding : Minecraft.getInstance().options.keyBindings) {
-            if (binding.getKeyCode() == keyCode && binding.isPressed()) {
-                return true;
+            if (binding.getKeyCode() == keyCode) {
+                if (binding.isPressed()) {
+                    return true;
+                }
+                bound = true;
             }
         }
 
-        return false;
+        return !bound && isPhysicallyDown(keyCode);
     }
 
     // ---------------------------------------------------------------- physical input

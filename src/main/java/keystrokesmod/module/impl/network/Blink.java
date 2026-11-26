@@ -57,15 +57,7 @@ public class Blink extends Module {
     }
 
     private Set<EnumLagDirection> lagDirectionsForMode() {
-        switch ((int) this.mode.getInput()) {
-            case 0:
-                return EnumLagDirection.ONLY_INBOUND;
-            case 1:
-            default:
-                return EnumLagDirection.ONLY_OUTBOUND;
-            case 2:
-                return EnumLagDirection.BIDIRECTIONAL;
-        }
+        return EnumLagDirection.forMode((int) this.mode.getInput());
     }
 
     public boolean delaysInboundPackets() {

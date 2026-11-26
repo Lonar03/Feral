@@ -8,34 +8,30 @@ import java.util.Set;
 import keystrokesmod.module.setting.impl.BlockListSetting;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.BlockState;
-import net.minecraft.util.math.BlockPos;
 
-public final class BlockListHighlightMatcher implements BlockHighlightMatcher {
+final class BlockListHighlightMatcher {
     private final BlockListSetting setting;
     private Set<String> matcherIds;
     private Map<String, Object> matcherWildcards;
     private int lastListHash;
 
-    public BlockListHighlightMatcher(BlockListSetting setting) {
+    BlockListHighlightMatcher(BlockListSetting setting) {
         this.setting = setting;
         this.rebuildMatcher();
     }
 
-    @Override
-    public void beginScanPass() {
+    void beginScanPass() {
         int h = this.setting.getBlocks().hashCode();
         if (h != this.lastListHash) {
             this.rebuildMatcher();
         }
     }
 
-    @Override
-    public boolean isActive() {
+    boolean isActive() {
         return !this.setting.getBlocks().isEmpty();
     }
 
-    @Override
-    public boolean matchesBlock(BlockState state) {
+    boolean matchesBlock(BlockState state) {
         if (state == null) {
             return false;
         }
@@ -59,11 +55,6 @@ public final class BlockListHighlightMatcher implements BlockHighlightMatcher {
         return meta != 0 && this.matcherIds.contains(registryId + ":" + meta)
                 ? true
                 : this.matcherIds.contains(registryId);
-    }
-
-    @Override
-    public boolean shouldIndexAt(BlockPos pos, BlockState state) {
-        return this.matchesBlock(state);
     }
 
     private void rebuildMatcher() {

@@ -77,6 +77,70 @@ public class RenderUtils implements IMinecraftInstance {
     private static int scissorPushDepth;
     private static final Map<String, Identifier> iconCache;
 
+    public static final class DirectionalGeometry {
+        public double x;
+        public double y;
+        public double z;
+        public boolean inFrustum;
+        public double hypotenuse;
+        public double rotation;
+        private double baseX;
+        private double baseY;
+        private double angle;
+        private double sinAng;
+        private double cosAng;
+
+        public void interpolate(Entity entity, float partialTicks) {
+            this.x = entity.prevX + (entity.x - entity.prevX) * partialTicks - mc.getEntityRenderDispatcher().cameraX;
+            this.y = entity.prevY
+                    + (entity.y - entity.prevY) * partialTicks
+                    - mc.getEntityRenderDispatcher().cameraY
+                    + entity.height / 2.0F;
+            this.z = entity.prevZ + (entity.z - entity.prevZ) * partialTicks - mc.getEntityRenderDispatcher().cameraZ;
+        }
+
+        public void direction(boolean render3D, Vec3d projected, int width, int height, float cameraYaw) {
+            this.inFrustum = false;
+            double dx;
+            double dy;
+            if (render3D) {
+                double angle = Math.atan2(this.z, this.x) - (Math.PI / 2) - Math.toRadians(cameraYaw);
+                dx = Math.sin(angle);
+                dy = -Math.cos(angle);
+            } else {
+                dx = projected.x - width / 2.0;
+                dy = projected.y - height / 2.0;
+                this.inFrustum = projected.z < 1.0003684;
+                if (!this.inFrustum) {
+                    dx *= -1.0;
+                    dy *= -1.0;
+                }
+            }
+            this.angle = Math.atan2(dx, dy);
+            this.rotation = Math.atan2(dy, dx) * (float) (180.0 / Math.PI) + 90.0;
+            this.hypotenuse = Math.hypot(dx, dy);
+        }
+
+        public void preparePlacement(int width, int height) {
+            this.baseX = width / 2.0;
+            this.baseY = height / 2.0;
+            this.sinAng = Math.sin(this.angle);
+            this.cosAng = Math.cos(this.angle);
+        }
+
+        public static float tilt(boolean render3D, float cameraPitch) {
+            return render3D ? 90.0F - Math.max(30.0F, cameraPitch) : 0.0F;
+        }
+
+        public double x(double radius) {
+            return this.baseX + radius * this.sinAng;
+        }
+
+        public double y(double radius, double verticalScale) {
+            return this.baseY + radius * this.cosAng * verticalScale;
+        }
+    }
+
     public static void renderBlock(BlockPos blockPos, int color, boolean outline, boolean shade) {
         renderBox(blockPos.getX(), blockPos.getY(), blockPos.getZ(), 1.0, 1.0, 1.0, color, outline, shade);
     }
@@ -2148,23 +2212,7 @@ public class RenderUtils implements IMinecraftInstance {
             GlStateManager.enableBlend();
             GlStateManager.blendFunc(770, 771);
             resetColor();
-            GlStateManager.translatef(x, y, 100.0F + renderItem.zOffset);
-            GlStateManager.translatef(8.0F, 8.0F, 0.0F);
-            GlStateManager.scalef(1.0F, 1.0F, -1.0F);
-            GlStateManager.scalef(0.5F, 0.5F, 0.5F);
-            if (model.isGui3d()) {
-                GlStateManager.scalef(40.0F, 40.0F, 40.0F);
-                GlStateManager.rotatef(210.0F, 1.0F, 0.0F, 0.0F);
-                GlStateManager.rotatef(-135.0F, 0.0F, 1.0F, 0.0F);
-                GlStateManager.enableLighting();
-            } else {
-                GlStateManager.scalef(64.0F, 64.0F, 64.0F);
-                GlStateManager.rotatef(180.0F, 1.0F, 0.0F, 0.0F);
-                GlStateManager.disableLighting();
-            }
-
-            model = ClientPlatform.ForgeHooksClient.handleCameraTransforms(model, Type.GUI);
-            renderItem.renderItem(stack, model);
+            drawGuiItemModel(renderItem, stack, model, x, y);
             GlStateManager.disableBlend();
             GlStateManager.disableRescaleNormal();
             GlStateManager.disableLighting();
@@ -2174,6 +2222,25 @@ public class RenderUtils implements IMinecraftInstance {
             renderItem.zOffset = 0.0F;
             Lighting.turnOff();
         }
+    }
+
+    /** Draws inside the caller's matrix and render state; does not set up or restore that state. */
+    public static void drawGuiItemModel(ItemRenderer renderer, ItemStack stack, BakedModel model, float x, float y) {
+        GlStateManager.translatef(x, y, 100.0F + renderer.zOffset);
+        GlStateManager.translatef(8.0F, 8.0F, 0.0F);
+        GlStateManager.scalef(1.0F, 1.0F, -1.0F);
+        GlStateManager.scalef(0.5F, 0.5F, 0.5F);
+        if (model.isGui3d()) {
+            GlStateManager.scalef(40.0F, 40.0F, 40.0F);
+            GlStateManager.rotatef(210.0F, 1.0F, 0.0F, 0.0F);
+            GlStateManager.rotatef(-135.0F, 0.0F, 1.0F, 0.0F);
+            GlStateManager.enableLighting();
+        } else {
+            GlStateManager.scalef(64.0F, 64.0F, 64.0F);
+            GlStateManager.rotatef(180.0F, 1.0F, 0.0F, 0.0F);
+            GlStateManager.disableLighting();
+        }
+        renderer.renderItem(stack, ClientPlatform.ForgeHooksClient.handleCameraTransforms(model, Type.GUI));
     }
 
     public static int blendInt(int n, int n2, double d) {

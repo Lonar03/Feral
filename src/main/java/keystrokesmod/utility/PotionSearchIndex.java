@@ -79,9 +79,8 @@ public final class PotionSearchIndex {
             return 1;
         }
 
-        String displayName = entry.displayName.toLowerCase(Locale.ROOT);
-        String key = entry.key.toLowerCase(Locale.ROOT);
-        String simpleKey = getSimpleKey(entry.key).toLowerCase(Locale.ROOT);
+        String displayName = entry.lowerDisplayName;
+        String simpleKey = entry.lowerSimpleKey;
         if (displayName.equals(lowerQuery)) {
             return 1000;
         }
@@ -98,7 +97,7 @@ public final class PotionSearchIndex {
             return 700;
         }
 
-        for (String token : displayName.split("\\s+")) {
+        for (String token : entry.displayTokens) {
             if (token.startsWith(lowerQuery)) {
                 return 600;
             }
@@ -107,7 +106,7 @@ public final class PotionSearchIndex {
         if (displayName.contains(lowerQuery)) {
             return 500;
         } else {
-            return !simpleKey.contains(lowerQuery) && !key.contains(lowerQuery) ? 0 : 400;
+            return !simpleKey.contains(lowerQuery) && !entry.lowerKey.contains(lowerQuery) ? 0 : 400;
         }
     }
 
@@ -162,7 +161,7 @@ public final class PotionSearchIndex {
         ItemStack bestStack = null;
         int bestScore = Integer.MIN_VALUE;
 
-        for (int metadata = 0; metadata <= 16384; metadata++) {
+        for (int metadata = 0; metadata <= MAX_POTION_META; metadata++) {
             List<StatusEffectInstance> effects = potionItem.getPotionEffects(metadata);
             if (effects != null && !effects.isEmpty()) {
                 int score = 0;
@@ -204,11 +203,19 @@ public final class PotionSearchIndex {
         public final int potionId;
         public final String key;
         public final String displayName;
+        private final String lowerDisplayName;
+        private final String lowerKey;
+        private final String lowerSimpleKey;
+        private final String[] displayTokens;
 
         private PotionEntry(int potionId, String key, String displayName) {
             this.potionId = potionId;
             this.key = key;
             this.displayName = displayName != null ? displayName : "";
+            this.lowerDisplayName = this.displayName.toLowerCase(Locale.ROOT);
+            this.lowerKey = key.toLowerCase(Locale.ROOT);
+            this.lowerSimpleKey = getSimpleKey(key).toLowerCase(Locale.ROOT);
+            this.displayTokens = this.lowerDisplayName.split("\\s+");
         }
     }
 

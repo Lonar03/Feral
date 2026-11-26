@@ -278,12 +278,7 @@ public class BedDefense extends Module {
         if (this.matches(mc.player.inventory.getItem(current), pending.type, pending.blockId)) {
             return current;
         }
-        for (int i = 0; i < 9; i++) {
-            if (this.matches(mc.player.inventory.getItem(i), pending.type, pending.blockId)) {
-                return i;
-            }
-        }
-        return -1;
+        return Utils.findHotbarSlot(stack -> this.matches(stack, pending.type, pending.blockId));
     }
 
     private boolean matches(ItemStack stack, BlockType type, int blockId) {

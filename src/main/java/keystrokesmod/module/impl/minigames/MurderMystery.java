@@ -12,6 +12,7 @@ import keystrokesmod.platform.ornithe.ForgeEvents;
 import keystrokesmod.utility.ItemSearchIndex;
 import keystrokesmod.utility.RenderUtils;
 import keystrokesmod.utility.Utils;
+import keystrokesmod.utility.WorldEntityScan.Kind;
 import net.minecraft.block.Blocks;
 import net.minecraft.client.render.platform.GlStateManager;
 import net.minecraft.entity.Entity;
@@ -147,7 +148,7 @@ public class MurderMystery extends Module {
                 float renderPartialTicks = ((IAccessorMinecraft) mc).getTimer().partialTick;
                 int n4 = -331703;
 
-                for (Entity entity : mc.world.entities) {
+                for (Entity entity : e.existingEntityCandidates(mc.world, Kind.ITEMS)) {
                     if (entity instanceof ItemEntity && entity.ticks >= 3) {
                         ItemEntity entityItem = (ItemEntity) entity;
                         if (entityItem.getItem().size != 0) {

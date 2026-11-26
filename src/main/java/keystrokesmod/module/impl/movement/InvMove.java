@@ -469,12 +469,16 @@ public class InvMove extends Module {
                 && (Utils.isBindDown(mc.options.sneakKey) || mc.player.input.sneaking);
     }
 
-    private void restoreMovementKeys() {
+    private void restoreDirectionalAndJumpKeys() {
         KeyBinding.set(mc.options.forwardKey.getKeyCode(), Utils.isBindDown(mc.options.forwardKey));
         KeyBinding.set(mc.options.backKey.getKeyCode(), Utils.isBindDown(mc.options.backKey));
         KeyBinding.set(mc.options.rightKey.getKeyCode(), Utils.isBindDown(mc.options.rightKey));
         KeyBinding.set(mc.options.leftKey.getKeyCode(), Utils.isBindDown(mc.options.leftKey));
         KeyBinding.set(mc.options.jumpKey.getKeyCode(), Utils.jumpDown());
+    }
+
+    private void restoreMovementKeys() {
+        this.restoreDirectionalAndJumpKeys();
         boolean applyAllowSettings = this.shouldApplyAllowSettings();
         boolean sneak = (mc.screen == null || !applyAllowSettings || this.allowSneak.isToggled())
                 && Utils.isBindDown(mc.options.sneakKey);
@@ -502,11 +506,7 @@ public class InvMove extends Module {
     }
 
     private void releaseCloseActionKeys() {
-        KeyBinding.set(mc.options.forwardKey.getKeyCode(), Utils.isBindDown(mc.options.forwardKey));
-        KeyBinding.set(mc.options.backKey.getKeyCode(), Utils.isBindDown(mc.options.backKey));
-        KeyBinding.set(mc.options.rightKey.getKeyCode(), Utils.isBindDown(mc.options.rightKey));
-        KeyBinding.set(mc.options.leftKey.getKeyCode(), Utils.isBindDown(mc.options.leftKey));
-        KeyBinding.set(mc.options.jumpKey.getKeyCode(), Utils.jumpDown());
+        this.restoreDirectionalAndJumpKeys();
         KeyBinding.set(mc.options.sneakKey.getKeyCode(), false);
         ((IAccessorKeyBinding) mc.options.sprintKey).setPressed(false);
         if (mc.player != null && mc.player.input != null) {

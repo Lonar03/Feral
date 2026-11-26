@@ -16,6 +16,7 @@ import keystrokesmod.module.setting.impl.SliderSetting;
 import keystrokesmod.platform.ornithe.ForgeEvents;
 import keystrokesmod.utility.RenderUtils;
 import keystrokesmod.utility.Utils;
+import keystrokesmod.utility.WorldEntityScan.Kind;
 import keystrokesmod.utility.font.FeralFontRenderer;
 import keystrokesmod.utility.font.FontManager;
 import net.minecraft.client.render.TextRenderer;
@@ -110,7 +111,7 @@ public class Nametags extends Module {
     public void onClientTick(ForgeEvents.TickEvent.ClientTickEvent event) {
         if (event.phase == ForgeEvents.TickEvent.Phase.END) {
             if (Utils.nullCheck() && mc.world != null) {
-                this.updateRenderStates();
+                this.updateRenderStates(event);
             } else {
                 this.renderStateCount = 0;
             }
@@ -136,7 +137,11 @@ public class Nametags extends Module {
         }
     }
 
-    private void updateRenderStates() {
+    boolean showsMobs() {
+        return this.showMobs.isToggled();
+    }
+
+    private void updateRenderStates(ForgeEvents.TickEvent.ClientTickEvent event) {
         FeralFontRenderer fontRenderer = this.getNametagFontRenderer();
         Entity viewer = mc.getCamera();
         if (viewer == null) {
@@ -148,7 +153,8 @@ public class Nametags extends Module {
             this.renderStateCount = 0;
 
             // Show mobs: every living entity instead of only players
-            List<? extends Entity> candidates = this.showMobs.isToggled() ? mc.world.entities : mc.world.players;
+            List<? extends Entity> candidates =
+                    this.showsMobs() ? OverlayEntityScans.tick(event, mc, Kind.LIVING) : mc.world.players;
             for (Entity candidate : candidates) {
                 if (candidate instanceof LivingEntity && this.shouldRenderNametag((LivingEntity) candidate)) {
                     LivingEntity player = (LivingEntity) candidate;

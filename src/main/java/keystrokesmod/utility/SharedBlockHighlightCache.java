@@ -8,6 +8,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import keystrokesmod.event.ReceivePacketEvent;
 import keystrokesmod.module.setting.impl.BlockListSetting;
+import net.minecraft.block.BedBlock;
 import net.minecraft.block.state.BlockState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.packet.s2c.play.BlockUpdateS2CPacket;
@@ -29,7 +30,6 @@ public final class SharedBlockHighlightCache {
     private final Deque<long[]> scanQueue = new ArrayDeque<>();
     private BlockListHighlightMatcher blockListMatcher;
     private boolean bedAttached;
-    private static final BedFootHighlightMatcher BED_MATCHER = new BedFootHighlightMatcher();
 
     private SharedBlockHighlightCache() {}
 
@@ -61,6 +61,10 @@ public final class SharedBlockHighlightCache {
 
     private boolean isBedActive() {
         return this.bedAttached;
+    }
+
+    private static boolean isBedFoot(BlockState state) {
+        return state != null && state.getBlock() instanceof BedBlock && state.get(BedBlock.PART) == BedBlock.Part.FOOT;
     }
 
     public boolean anyConsumerActive() {
@@ -157,7 +161,7 @@ public final class SharedBlockHighlightCache {
         long ck = key(pos.getX() >> 4, pos.getZ() >> 4);
         BlockPos immutablePos = new BlockPos(pos.getX(), pos.getY(), pos.getZ());
         if (this.isBlockListActive()) {
-            if (this.blockListMatcher.matchesBlock(newState) && this.blockListMatcher.shouldIndexAt(pos, newState)) {
+            if (this.blockListMatcher.matchesBlock(newState)) {
                 this.blockListByChunk
                         .computeIfAbsent(ck, k -> ConcurrentHashMap.newKeySet())
                         .add(immutablePos);
@@ -170,7 +174,7 @@ public final class SharedBlockHighlightCache {
         }
 
         if (this.isBedActive()) {
-            if (BED_MATCHER.matchesBlock(newState) && BED_MATCHER.shouldIndexAt(pos, newState)) {
+            if (isBedFoot(newState)) {
                 this.bedFootByChunk
                         .computeIfAbsent(ck, k -> ConcurrentHashMap.newKeySet())
                         .add(immutablePos);
@@ -287,19 +291,19 @@ public final class SharedBlockHighlightCache {
                 for (int y = 0; y < 16; y++) {
                     for (int z = 0; z < 16; z++) {
                         for (int x = 0; x < 16; x++) {
-                            BlockPos pos = new BlockPos(baseX + x, baseY + y, baseZ + z);
                             BlockState state = section.getBlockState(x, y, z);
                             if (state != null) {
-                                if (this.isBlockListActive()
-                                        && this.blockListMatcher.matchesBlock(state)
-                                        && this.blockListMatcher.shouldIndexAt(pos, state)) {
-                                    blockFound.add(pos);
+                                BlockPos matchPos = null;
+                                if (this.isBlockListActive() && this.blockListMatcher.matchesBlock(state)) {
+                                    matchPos = new BlockPos(baseX + x, baseY + y, baseZ + z);
+                                    blockFound.add(matchPos);
                                 }
 
-                                if (this.isBedActive()
-                                        && BED_MATCHER.matchesBlock(state)
-                                        && BED_MATCHER.shouldIndexAt(pos, state)) {
-                                    bedFound.add(pos);
+                                if (this.isBedActive() && isBedFoot(state)) {
+                                    bedFound.add(
+                                            matchPos != null
+                                                    ? matchPos
+                                                    : new BlockPos(baseX + x, baseY + y, baseZ + z));
                                 }
                             }
                         }

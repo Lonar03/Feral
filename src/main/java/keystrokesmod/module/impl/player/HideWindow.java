@@ -1,19 +1,17 @@
 package keystrokesmod.module.impl.player;
 
 import java.util.List;
+import keystrokesmod.clickgui.HudPositionEditor;
 import keystrokesmod.event.ReceivePacketEvent;
 import keystrokesmod.module.Module;
 import keystrokesmod.module.setting.impl.ButtonSetting;
 import keystrokesmod.module.setting.impl.ColorSetting;
 import keystrokesmod.module.setting.impl.SliderSetting;
 import keystrokesmod.module.setting.impl.StringListSetting;
-import keystrokesmod.platform.ClientPlatform;
 import keystrokesmod.platform.ornithe.ForgeEvents;
 import keystrokesmod.utility.RenderUtils;
-import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.game.inventory.InventoryMenuScreen;
 import net.minecraft.client.gui.screen.game.inventory.SurvivalInventoryScreen;
-import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.render.Window;
 import net.minecraft.inventory.menu.ChestMenu;
 import net.minecraft.network.packet.s2c.play.CloseInventoryMenuS2CPacket;
@@ -227,89 +225,46 @@ public class HideWindow extends Module {
                 : "";
     }
 
-    private class EditScreen extends Screen {
-        private ButtonWidget resetBtn;
-        private boolean dragging;
-        private float actualX;
-        private float actualY;
-        private float lastActualX;
-        private float lastActualY;
-        private int lastMouseX;
-        private int lastMouseY;
-
-        private EditScreen() {}
-
-        public void init() {
-            super.init();
-            this.buttons.add(
-                    this.resetBtn = new ButtonWidget(1, this.width - 90, this.height - 25, 85, 20, "Reset position"));
-            HideWindow.this.syncPosition(new Window(this.minecraft));
-            this.actualX = HideWindow.this.posX;
-            this.actualY = HideWindow.this.posY;
+    private class EditScreen extends HudPositionEditor {
+        private EditScreen() {
+            super("Drag the icon to reposition it.", 10);
         }
 
-        public void render(int mouseX, int mouseY, float partialTicks) {
-            Window resolution = new Window(this.minecraft);
-            if (!this.dragging) {
-                HideWindow.this.syncPosition(resolution);
-                this.actualX = HideWindow.this.posX;
-                this.actualY = HideWindow.this.posY;
-            }
+        @Override
+        protected void syncAnchor(Window window) {
+            HideWindow.this.syncPosition(window);
+        }
 
-            fill(0, 0, this.width, this.height, -1308622848);
-            HideWindow.this.setAbsolutePosition(this.actualX, this.actualY, resolution);
+        @Override
+        protected float anchorX() {
+            return HideWindow.this.posX;
+        }
+
+        @Override
+        protected float anchorY() {
+            return HideWindow.this.posY;
+        }
+
+        @Override
+        protected void drawPreview(float x, float y, Window window) {
+            HideWindow.this.setAbsolutePosition(x, y, window);
             HideWindow.this.renderIcon(true);
-            this.actualX = HideWindow.this.posX;
-            this.actualY = HideWindow.this.posY;
-            String message = "Drag the icon to reposition it.";
-            int textX = resolution.getWidth() / 2 - this.textRenderer.getWidth(message) / 2;
-            int textY = resolution.getHeight() / 2 - 10;
-            RenderUtils.drawColoredString(message, '-', textX, textY, 2L, 0L, true, this.minecraft.textRenderer);
-            ClientPlatform.handleInput(this);
-            super.render(mouseX, mouseY, partialTicks);
         }
 
-        protected void mouseDragged(int mouseX, int mouseY, int button, long timeSinceLastClick) {
-            super.mouseDragged(mouseX, mouseY, button, timeSinceLastClick);
-            if (button == 0) {
-                if (this.dragging) {
-                    this.actualX = this.lastActualX + (mouseX - this.lastMouseX);
-                    this.actualY = this.lastActualY + (mouseY - this.lastMouseY);
-                } else {
-                    float scale = (float) HideWindow.this.iconScale.getInput();
-                    int size = Math.round(16.0F * scale);
-                    float minX = HideWindow.this.posX - size / 2.0F - 2.0F;
-                    float minY = HideWindow.this.posY - size / 2.0F - 2.0F;
-                    float maxX = HideWindow.this.posX + size / 2.0F + 2.0F;
-                    float maxY = HideWindow.this.posY + size / 2.0F + 2.0F;
-                    if (mouseX >= minX && mouseX <= maxX && mouseY >= minY && mouseY <= maxY) {
-                        this.dragging = true;
-                        this.lastMouseX = mouseX;
-                        this.lastMouseY = mouseY;
-                        this.lastActualX = this.actualX;
-                        this.lastActualY = this.actualY;
-                    }
-                }
-            }
+        @Override
+        protected boolean hitsPreview(int mouseX, int mouseY) {
+            float scale = (float) HideWindow.this.iconScale.getInput();
+            int size = Math.round(16.0F * scale);
+            float minX = HideWindow.this.posX - size / 2.0F - 2.0F;
+            float minY = HideWindow.this.posY - size / 2.0F - 2.0F;
+            float maxX = HideWindow.this.posX + size / 2.0F + 2.0F;
+            float maxY = HideWindow.this.posY + size / 2.0F + 2.0F;
+            return mouseX >= minX && mouseX <= maxX && mouseY >= minY && mouseY <= maxY;
         }
 
-        protected void mouseReleased(int mouseX, int mouseY, int state) {
-            super.mouseReleased(mouseX, mouseY, state);
-            if (state == 0) {
-                this.dragging = false;
-            }
-        }
-
-        public void buttonClicked(ButtonWidget button) {
-            if (button == this.resetBtn) {
-                HideWindow.this.resetPosition();
-                this.actualX = HideWindow.this.posX;
-                this.actualY = HideWindow.this.posY;
-            }
-        }
-
-        public boolean shouldPauseGame() {
-            return false;
+        @Override
+        protected void resetAnchor() {
+            HideWindow.this.resetPosition();
         }
     }
 }

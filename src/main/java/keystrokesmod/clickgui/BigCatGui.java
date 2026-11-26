@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import keystrokesmod.module.Module;
 import keystrokesmod.module.ModuleManager;
 import keystrokesmod.module.impl.client.Gui;
@@ -566,16 +567,9 @@ public final class BigCatGui extends ScriptDefaults {
         for (int i = 0; i < shown.size(); i++) {
             onNames.add(((keystrokesmod.module.Module) shown.get(i)).getName());
         }
-        ArrayList closing = new ArrayList(arrayAnim.keySet());
-        for (int i = 0; i < closing.size(); i++) {
-            String name = (String) closing.get(i);
-            if (!onNames.contains(name)) {
-                keystrokesmod.module.Module found = findModule(name);
-                if (found != null) {
-                    shown.add(found);
-                }
-            }
-        }
+        List<String> closing = new ArrayList<>(arrayAnim.keySet());
+        closing.removeIf(onNames::contains);
+        appendClosingModules(shown, closing);
         int n = shown.size();
         if (n == 0) {
             return;
@@ -630,6 +624,38 @@ public final class BigCatGui extends ScriptDefaults {
         }
     }
 
+    private void appendClosingModules(List<Module> shown, List<String> closing) {
+        if (closing.isEmpty()) {
+            return;
+        }
+        if (closing.size() == 1) {
+            Module found = findModule(closing.get(0));
+            if (found != null) {
+                shown.add(found);
+            }
+            return;
+        }
+
+        Map<String, Module> closingModules = new HashMap<>();
+        HashSet<String> remaining = new HashSet<>(closing);
+        for (Object item : allModules()) {
+            Module module = (Module) item;
+            String name = module.getName();
+            if (remaining.remove(name)) {
+                closingModules.put(name, module);
+                if (remaining.isEmpty()) {
+                    break;
+                }
+            }
+        }
+        for (String name : closing) {
+            Module found = closingModules.get(name);
+            if (found != null) {
+                shown.add(found);
+            }
+        }
+    }
+
     private keystrokesmod.module.Module findModule(String name) {
         ArrayList all = allModules();
         for (int i = 0; i < all.size(); i++) {
@@ -662,11 +688,19 @@ public final class BigCatGui extends ScriptDefaults {
 
     private void sortByWidth(ArrayList list, keystrokesmod.utility.font.FeralFontRenderer fr, float infoF) {
         int n = list.size();
+        // Info may call a script, so retain the original evaluation order while suffixes are visible.
+        float[] widths = null;
+        if (n > 2 && !(infoF > 0.001f)) {
+            widths = new float[n];
+            for (int i = 0; i < n; i++) {
+                widths[i] = tw(fr, ((keystrokesmod.module.Module) list.get(i)).getName());
+            }
+        }
         for (int i = 0; i < n - 1; i++) {
             int best = i;
-            float bestW = rowWidth((keystrokesmod.module.Module) list.get(i), fr, infoF);
+            float bestW = widths == null ? rowWidth((keystrokesmod.module.Module) list.get(i), fr, infoF) : widths[i];
             for (int j = i + 1; j < n; j++) {
-                float w = rowWidth((keystrokesmod.module.Module) list.get(j), fr, infoF);
+                float w = widths == null ? rowWidth((keystrokesmod.module.Module) list.get(j), fr, infoF) : widths[j];
                 if (w > bestW) {
                     bestW = w;
                     best = j;
@@ -676,6 +710,10 @@ public final class BigCatGui extends ScriptDefaults {
                 Object tmp = list.get(i);
                 list.set(i, list.get(best));
                 list.set(best, tmp);
+                if (widths != null) {
+                    widths[best] = widths[i];
+                    widths[i] = bestW;
+                }
             }
         }
     }
@@ -2060,13 +2098,7 @@ public final class BigCatGui extends ScriptDefaults {
                     y2,
                     argb(Math.round(255f * (1f - clampF((x1 - sqX) / sqW, 0f, 1f))), 255, 255, 255),
                     argb(Math.round(255f * (1f - clampF((x2 - sqX) / sqW, 0f, 1f))), 255, 255, 255));
-            gradV(
-                    x1,
-                    y1,
-                    x2,
-                    y2,
-                    argb(Math.round(255f * clampF((y1 - sqY) / sqH, 0f, 1f)), 0, 0, 0),
-                    argb(Math.round(255f * clampF((y2 - sqY) / sqH, 0f, 1f)), 0, 0, 0));
+            drawPickerOpacityBand(x1, y1, x2, y2, sqY, sqH, 0);
         }
     }
 
@@ -2095,9 +2127,6 @@ public final class BigCatGui extends ScriptDefaults {
         float sqB = sqY + sqH;
         float cell = PICKER_CHECK * s;
         int rgb = cs.getRGB();
-        int cr = (rgb >> 16) & 255;
-        int cg = (rgb >> 8) & 255;
-        int cb = rgb & 255;
 
         for (float ay = sqY; ay < sqB - 0.05f; ay += cell) {
             float a = ay;
@@ -2128,14 +2157,14 @@ public final class BigCatGui extends ScriptDefaults {
                 continue;
             }
             float inset = pickerInset(sqY, sqB, r, y1, y2);
-            gradV(
-                    x + inset,
-                    y1,
-                    x + w - inset,
-                    y2,
-                    argb(Math.round(255f * clampF((y1 - sqY) / sqH, 0f, 1f)), cr, cg, cb),
-                    argb(Math.round(255f * clampF((y2 - sqY) / sqH, 0f, 1f)), cr, cg, cb));
+            drawPickerOpacityBand(x + inset, y1, x + w - inset, y2, sqY, sqH, rgb);
         }
+    }
+
+    private void drawPickerOpacityBand(float x1, float y1, float x2, float y2, float top, float height, int rgb) {
+        int a1 = Math.round(255f * clampF((y1 - top) / height, 0f, 1f));
+        int a2 = Math.round(255f * clampF((y2 - top) / height, 0f, 1f));
+        gradV(x1, y1, x2, y2, withAlpha(rgb, a1), withAlpha(rgb, a2));
     }
 
     /** Y cut positions across [y1,y2]: arcSteps inside each corner arc, midCuts evenly through the middle. */

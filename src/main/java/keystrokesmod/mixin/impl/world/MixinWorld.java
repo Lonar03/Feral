@@ -2,17 +2,50 @@ package keystrokesmod.mixin.impl.world;
 
 import keystrokesmod.module.ModuleManager;
 import keystrokesmod.module.impl.combat.Displace;
+import keystrokesmod.utility.WorldEntityScan.MembershipVersion;
 import net.minecraft.block.state.BlockState;
+import net.minecraft.entity.Entity;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(World.class)
-public class MixinWorld {
+public class MixinWorld implements MembershipVersion {
+    @Unique
+    private long feral$entityMembershipVersion;
+
+    @Override
+    public long feral$getEntityMembershipVersion() {
+        return this.feral$entityMembershipVersion;
+    }
+
+    // Normal joins/leaves (including bulk loading, unloads and the client script APIs) notify after
+    // changing the list. Invalidate before world listeners can run in response to the notification.
+    @Inject(
+            method = {"notifyEntityAdded", "notifyEntityRemoved"},
+            at = @At("HEAD"))
+    private void feral$entityMembershipChanged(Entity entity, CallbackInfo info) {
+        this.feral$invalidateEntityMembership();
+    }
+
+    // This vanilla insertion path skips the normal add notification.
+    @Inject(method = "addEntityAlways", at = @At("RETURN"))
+    private void feral$entityAddedAlways(Entity entity, CallbackInfo info) {
+        this.feral$invalidateEntityMembership();
+    }
+
+    @Unique
+    private void feral$invalidateEntityMembership() {
+        if (((World) (Object) this).isClient) {
+            this.feral$entityMembershipVersion++;
+        }
+    }
+
     @Inject(
             method = "setBlockState(Lnet/minecraft/util/math/BlockPos;Lnet/minecraft/block/state/BlockState;I)Z",
             at = @At("RETURN"))
