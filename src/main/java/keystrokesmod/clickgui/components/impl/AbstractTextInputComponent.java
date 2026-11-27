@@ -1,5 +1,7 @@
 package keystrokesmod.clickgui.components.impl;
 
+import keystrokesmod.clickgui.ClassicIcons;
+import keystrokesmod.clickgui.GuiText;
 import keystrokesmod.clickgui.components.Component;
 import keystrokesmod.clickgui.components.FocusableTextComponent;
 import keystrokesmod.module.impl.client.Gui;
@@ -143,11 +145,24 @@ public abstract class AbstractTextInputComponent extends Component implements Fo
     }
 
     protected static void drawScaledText(String text, float x, float y, int color, float scale) {
+        drawScaledText(text, x, y, color, scale, Float.POSITIVE_INFINITY);
+    }
+
+    protected static void drawScaledText(String text, float x, float y, int color, float scale, float right) {
         FeralFontRenderer renderer = Gui.getClickGuiSettingFontRenderer();
         GL11.glPushMatrix();
         GL11.glScaled(scale, scale, scale);
-        renderer.drawString(text, x / scale, y / scale, color, false);
+        renderer.drawString(GuiText.fit(renderer, text, (right - x) / scale), x / scale, y / scale, color, false);
         GL11.glPopMatrix();
+    }
+
+    protected static void drawCloseIcon(float right, float rowTop) {
+        int color = Theme.getGradient(Theme.HIDDEN_BIND[0], Theme.HIDDEN_BIND[1], 0.0);
+        ClassicIcons.Mask.CLOSE.draw(right - 9f, rowTop + 2.5f, 6f, color);
+    }
+
+    protected static boolean isOverCloseIcon(float mouseX, float mouseY, float right, float rowTop) {
+        return mouseX >= right - 10f && mouseX <= right - 2f && mouseY >= rowTop + 1f && mouseY <= rowTop + 10f;
     }
 
     protected static final class Layout {

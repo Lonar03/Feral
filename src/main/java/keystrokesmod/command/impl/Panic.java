@@ -23,7 +23,7 @@ public class Panic extends Command {
         int count = 0;
 
         for (Module module : modules) {
-            if (module.isEnabled() && module != ModuleManager.commandLine) {
+            if (module.isEnabled()) {
                 module.disable();
                 count++;
             }

@@ -1,10 +1,8 @@
 package keystrokesmod.clickgui;
 
-import keystrokesmod.event.KeyPressEvent;
 import keystrokesmod.module.impl.client.Gui;
 import keystrokesmod.module.impl.render.HUD;
 import keystrokesmod.platform.ornithe.ForgeEvents.EventPriority;
-import keystrokesmod.platform.ornithe.ForgeEvents.MouseEvent;
 import keystrokesmod.platform.ornithe.ForgeEvents.SubscribeEvent;
 import keystrokesmod.platform.ornithe.ForgeEvents.TickEvent.Phase;
 import keystrokesmod.platform.ornithe.ForgeEvents.TickEvent.RenderTickEvent;
@@ -14,7 +12,7 @@ import net.minecraft.client.render.platform.GlStateManager;
 import net.minecraft.client.render.platform.Lighting;
 import org.lwjgl.opengl.GL11;
 
-/** Feeds {@link BigCatGui} the same events the script engine gave the catGUI script, while its style is on. */
+/** Draws the native Big Cat screen and HUD overlays after the game frame. */
 public class BigCatEvents {
     private final BigCatGui gui = BigCatGui.INSTANCE;
 
@@ -25,40 +23,25 @@ public class BigCatEvents {
         }
 
         Minecraft mc = Minecraft.getInstance();
+        boolean notifications = HUD.areNotificationsEnabled();
+        if (!notifications) {
+            this.gui.resetNotifications();
+        }
         if (!Gui.isBigCatStyle()) {
             if (this.gui.isOpen()) {
                 // The style was switched from inside the window: close it. The next open uses the new style.
                 this.gui.onDisable();
             }
-            if (!HUD.isCatArraylistSelected()) {
+            if (!notifications && !HUD.isCatArraylistSelected()) {
                 return;
             }
         }
 
         mc.gameRenderer.setupGuiState();
         try {
-            this.gui.onRenderTick(e.renderTickTime);
+            this.gui.onRenderTick(notifications);
         } finally {
             restoreOverlayRenderState(mc);
-        }
-    }
-
-    @SubscribeEvent(priority = EventPriority.HIGHEST)
-    public void onMouse(MouseEvent e) {
-        if (!Gui.isBigCatStyle() || e.button == -1 && e.dwheel == 0) {
-            return;
-        }
-
-        boolean state = e.button == -1 ? e.dwheel > 0 : e.buttonstate;
-        if (!this.gui.onMouse(e.button, state, e.x, e.y)) {
-            e.setCanceled(true);
-        }
-    }
-
-    @SubscribeEvent(priority = EventPriority.HIGHEST)
-    public void onKeyPress(KeyPressEvent e) {
-        if (!e.isCanceled() && Gui.isBigCatStyle() && !this.gui.onKeyPress(e.typedChar, e.keyCode)) {
-            e.setCanceled(true);
         }
     }
 

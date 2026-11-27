@@ -30,7 +30,7 @@ public final class OverlayEntityScans {
         // its own kind, even if it was disabled after the bus took its listener snapshot.
         int kinds = requested.bit();
         Module items = ModuleManager.getModule(ItemESP.class);
-        if (items instanceof ItemESP && items.isEnabled() && ((ItemESP) items).hasResourceOverlay()) {
+        if (items instanceof ItemESP && items.isEnabled() && ((ItemESP) items).hasVisibleOverlay()) {
             kinds |= Kind.ITEMS.bit();
         }
         if (enabled(HoloVis.class)) {

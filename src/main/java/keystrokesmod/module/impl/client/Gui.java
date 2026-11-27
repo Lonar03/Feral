@@ -36,13 +36,15 @@ public class Gui extends Module {
     public static ColorSetting bigCatBackgroundColor;
 
     public static ColorSetting bigCatTextColor;
+    public static SliderSetting bigCatWidth;
+    public static SliderSetting bigCatHeight;
     /** Only used by the Big cat style. BigCatGui reads them by name, so keep the names in sync. */
     private final List<Setting> bigCatSettings = new ArrayList<>();
     /** Only used by the Classic style (the ClickGui). */
     private final List<Setting> clickGuiSettings = new ArrayList<>();
 
-    private static final String[] CORNERS = new String[] {"Top left", "Top right", "Bottom left", "Bottom right"};
     private static final String[] STYLES = new String[] {"Classic", "Big cat"};
+    public static final int DEFAULT_KEY = 54;
     /** Style the open GUI was opened with; a change while it's open closes it (-1 = unknown). */
     private static double openedStyle = -1.0;
 
@@ -51,8 +53,9 @@ public class Gui extends Module {
     public static final int INFO_COLOR = new Color(57, 146, 229, 255).getRGB();
 
     public Gui() {
-        super("Gui", Module.category.client, 54);
+        super("Gui", Module.category.client, DEFAULT_KEY);
         this.liteModule = true;
+        this.canBeEnabled = false;
         this.registerSetting(guiScale = new SliderSetting("Scale", "x", 1.0, 0.5, 2.0, 0.01, "Gui scale"));
         this.registerSetting(style = new SliderSetting("Style", 0, STYLES));
         this.registerSetting(font = FontManager.createFontSetting("Font"));
@@ -76,25 +79,14 @@ public class Gui extends Module {
         // Big cat window (ported from MeowerClient). Its accent colour is the selected category's colour.
         GroupSetting window = new GroupSetting("Big cat window");
         this.registerSetting(window, bigCatSettings);
-        this.registerSetting(new SliderSetting(window, "Width", "px", 540.0, 430.0, 900.0, 5.0), bigCatSettings);
-        this.registerSetting(new SliderSetting(window, "Height", "px", 410.0, 270.0, 700.0, 5.0), bigCatSettings);
+        this.registerSetting(
+                bigCatWidth = new SliderSetting(window, "Width", "px", 540.0, 260.0, 900.0, 5.0), bigCatSettings);
+        this.registerSetting(
+                bigCatHeight = new SliderSetting(window, "Height", "px", 410.0, 180.0, 700.0, 5.0), bigCatSettings);
         this.registerSetting(new SliderSetting(window, "Opacity", "%", 100.0, 40.0, 100.0, 1.0), bigCatSettings);
         this.registerSetting(
                 bigCatBackgroundColor = new ColorSetting(window, "Background color", 20, 22, 26), bigCatSettings);
         this.registerSetting(bigCatTextColor = new ColorSetting(window, "Text color", 240, 240, 240), bigCatSettings);
-
-        GroupSetting notifications = new GroupSetting("Notifications");
-        this.registerSetting(notifications, bigCatSettings);
-        this.registerSetting(new ButtonSetting(notifications, "Show notifications", true), bigCatSettings);
-        this.registerSetting(
-                new SliderSetting(notifications, "Notification style", "", 0, new String[] {"Classic", "Modern"}),
-                bigCatSettings);
-        this.registerSetting(new SliderSetting(notifications, "Notification corner", "", 3, CORNERS), bigCatSettings);
-        this.registerSetting(
-                new SliderSetting(notifications, "Notification scale", "x", 1.0, 0.6, 2.0, 0.05), bigCatSettings);
-        this.registerSetting(
-                new SliderSetting(notifications, "Notification opacity", "%", 100.0, 40.0, 100.0, 1.0), bigCatSettings);
-        // The Big cat arraylist settings are in HUD (Arraylist: Big cat).
     }
 
     private void registerSetting(Setting setting, List<Setting> styleList) {
@@ -121,19 +113,22 @@ public class Gui extends Module {
     }
 
     @Override
-    public void onEnable() {
+    public boolean canBeBound() {
+        return true;
+    }
+
+    @Override
+    protected void onBindPressed() {
         openedStyle = style.getInput();
         if (isBigCatStyle()) {
             if (Utils.nullCheck() && mc.screen == null) {
-                Feral.clickGui.reloadModulesForCurrentMode();
+                // Profile/script reloads and Lite mode already keep the shared module list current.
                 BigCatGui.INSTANCE.requestOpen();
             }
         } else if (Utils.nullCheck() && mc.screen != Feral.clickGui) {
             mc.openScreen(Feral.clickGui);
             Feral.clickGui.initMain();
         }
-
-        this.disable();
     }
 
     public static String getSelectedFontName() {
@@ -164,7 +159,9 @@ public class Gui extends Module {
     }
 
     public static float getClickGuiScale() {
-        return guiScale == null ? 1.0F : (float) Math.max(0.5, Math.min(2.0, guiScale.getInput()));
+        double multiplier =
+                guiScale == null ? 1.0 : Math.max(guiScale.getMin(), Math.min(guiScale.getMax(), guiScale.getInput()));
+        return (float) multiplier;
     }
 
     /** True when the Gui opens the big cat window (Meower's catGUI design) instead of the ClickGUI. */

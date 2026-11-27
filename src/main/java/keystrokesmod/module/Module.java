@@ -83,7 +83,7 @@ public class Module {
                         this.isToggled = false;
                     }
                 } else {
-                    this.toggle();
+                    this.onBindPressed();
                     this.isToggled = true;
                 }
             } catch (Exception e) {
@@ -113,6 +113,14 @@ public class Module {
 
     public boolean canBeEnabled() {
         return this.script != null && this.script.error ? false : this.canBeEnabled;
+    }
+
+    public boolean canBeBound() {
+        return this.canBeEnabled();
+    }
+
+    protected void onBindPressed() {
+        this.toggle();
     }
 
     public boolean isHidden() {

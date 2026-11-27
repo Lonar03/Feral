@@ -10,7 +10,6 @@ import keystrokesmod.module.setting.impl.PlayerListSetting;
 import keystrokesmod.utility.PlayerRelationsManager;
 import keystrokesmod.utility.PlayerSkinCache;
 import keystrokesmod.utility.RenderUtils;
-import keystrokesmod.utility.Theme;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiElement;
 import net.minecraft.client.network.PlayerInfo;
@@ -19,7 +18,6 @@ import net.minecraft.resource.Identifier;
 import org.lwjgl.opengl.GL11;
 
 public class PlayerListComponent extends AbstractTextInputComponent {
-    private static final String CLOSE_ICON_PATH = "/assets/keystrokesmod/textures/gui/close.png";
     private static final float SELECTED_LIST_GAP = 4.0F;
     private static final int MAX_VISIBLE_SELECTED = 7;
     private static final int CLOSE_SIZE = 6;
@@ -191,8 +189,13 @@ public class PlayerListComponent extends AbstractTextInputComponent {
             int bgColor) {
         RenderUtils.drawRect(left, rowTop, right, rowTop + 12.0F - 1.0F, bgColor);
         this.renderPlayerHead(entry, playerInfo, left + 2.0F, rowTop + 1.5F);
-        drawScaledTextNoShadow(
-                entry.getDisplayName(), left + 13.0F, centeredScaledTextY(rowTop, 11.0F, 0.56F) + 0.56F, -3355444);
+        drawScaledText(
+                entry.getDisplayName(),
+                left + 13f,
+                centeredScaledTextY(rowTop, 11f, 0.56f),
+                -3355444,
+                0.56f,
+                right - 11f);
         this.renderCloseIcon(right, rowTop);
     }
 
@@ -288,22 +291,10 @@ public class PlayerListComponent extends AbstractTextInputComponent {
     }
 
     private void renderCloseIcon(float right, float rowTop) {
-        Identifier close = RenderUtils.getIcon("/assets/keystrokesmod/textures/gui/close.png");
-        if (close != null) {
-            float closeX = right - 6.0F - 3.0F;
-            float closeY = rowTop + 2.5F;
-            int closeColor = Theme.getGradient(Theme.HIDDEN_BIND[0], Theme.HIDDEN_BIND[1], 0.0);
-            RenderUtils.drawIcon(close, closeX, closeY, 6, closeColor);
-        }
+        drawCloseIcon(right, rowTop);
     }
 
     private boolean isOverClose(float mouseX, float mouseY, float rowTop, float right) {
-        float closeX = right - 6.0F - 3.0F;
-        float closeY = rowTop + 2.5F;
-        return mouseX >= closeX && mouseX <= closeX + 6.0F && mouseY >= closeY && mouseY <= closeY + 6.0F;
-    }
-
-    private static void drawScaledTextNoShadow(String text, float x, float y, int color) {
-        drawScaledText(text, x, y, color, 0.56F);
+        return isOverCloseIcon(mouseX, mouseY, right, rowTop);
     }
 }

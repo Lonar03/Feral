@@ -8,7 +8,9 @@ import keystrokesmod.module.impl.combat.Velocity;
 import keystrokesmod.module.setting.Setting;
 import keystrokesmod.module.setting.impl.ButtonSetting;
 import keystrokesmod.module.setting.impl.ColorSetting;
+import keystrokesmod.module.setting.impl.GroupSetting;
 import keystrokesmod.module.setting.impl.SliderSetting;
+import keystrokesmod.module.setting.impl.StringListSetting;
 import keystrokesmod.platform.ClientPlatform;
 import keystrokesmod.platform.ornithe.ForgeEvents;
 import keystrokesmod.utility.RenderUtils;
@@ -22,6 +24,7 @@ import net.minecraft.client.render.Window;
 
 public class HUD extends Module {
     private static final String[] COLOR_MODES = new String[] {"Static", "Gradient", "Rainbow", "Theme"};
+    private static final String[] COLOR_MODES2 = new String[] {"Static", "Gradient", "Rainbow", "Theme", "Category"};
     private static final String[] WAVE_AXES = new String[] {"Vertical", "Horizontal"};
     private static final String[] VERTICAL_WAVE_DIRECTIONS = new String[] {"Down", "Up"};
     private static final String[] HORIZONTAL_WAVE_DIRECTIONS = new String[] {"Left", "Right"};
@@ -31,6 +34,7 @@ public class HUD extends Module {
     private static final long HUD_RAINBOW_PERIOD_MS = 7500L;
     private static final double HUD_WAVE_ANGLE_SCALE = 0.12;
     public static SliderSetting colorMode;
+    public static SliderSetting colorMode2;
     public static SliderSetting theme;
     public static ColorSetting hudColor;
     public static ColorSetting hudColor2;
@@ -42,7 +46,11 @@ public class HUD extends Module {
     public static SliderSetting font;
     public static SliderSetting fontSize;
     public static SliderSetting arraylistStyle;
-    /** Big cat arraylist only (moved from the Gui module's Big cat settings). */
+    public static ButtonSetting showArraylist;
+    public static ButtonSetting showNotifications;
+    public static ButtonSetting useNotificationBlacklist;
+    public static StringListSetting notificationBlacklist;
+    public static SliderSetting notificationStyle, notificationCorner, notificationScale, notificationOpacity;
     public static SliderSetting catCorner;
 
     public static SliderSetting catScale;
@@ -68,95 +76,166 @@ public class HUD extends Module {
     private String lastHudFontName = "";
     private float lastHudFontScale = -1.0F;
     private static final int THEME_COLOR_MODE = 3;
+    private static final int CATEGORY_COLOR_MODE = 4;
     private static final int DEFAULT_THEME_INDEX = Theme.DEFAULT_THEME_INDEX;
+    private int visibilityState = -1;
 
     public HUD() {
         super("HUD", Module.category.render);
-        this.registerSetting(arraylistStyle = new SliderSetting("Arraylist", 0, ARRAYLIST_STYLES));
-        this.registerSetting(catCorner = new SliderSetting("Arraylist corner", 1, CORNERS));
-        this.registerSetting(catScale = new SliderSetting("Arraylist scale", "x", 1.0, 0.6, 2.0, 0.05));
-        this.registerSetting(catOpacity = new SliderSetting("Arraylist opacity", "%", 100.0, 0.0, 100.0, 1.0));
-        this.registerSetting(colorMode = new SliderSetting("Color mode", 0, COLOR_MODES));
-        this.registerSetting(theme = new SliderSetting("Theme", DEFAULT_THEME_INDEX, Theme.THEMES_SETTING));
-        this.registerSetting(hudColor = new ColorSetting("Color", 255, 255, 255));
-        this.registerSetting(hudColor2 = new ColorSetting("Color 2", 85, 85, 255));
-        this.registerSetting(waveAxis = new SliderSetting("Wave axis", 0, WAVE_AXES));
-        this.registerSetting(verticalWaveDirection = new SliderSetting("Wave direction", 0, VERTICAL_WAVE_DIRECTIONS));
+        GroupSetting arraylist = new GroupSetting("Arraylist");
+        this.registerSetting(arraylist);
+        this.registerSetting(showArraylist = new ButtonSetting(arraylist, "Show arraylist", true));
+        this.registerSetting(arraylistStyle = new SliderSetting(arraylist, "Style", 0, ARRAYLIST_STYLES));
+        this.registerSetting(catCorner = new SliderSetting(arraylist, "Arraylist corner", 1, CORNERS));
+        this.registerSetting(catScale = new SliderSetting(arraylist, "Arraylist scale", "x", 1.0, 0.6, 2.0, 0.05));
         this.registerSetting(
-                horizontalWaveDirection = new SliderSetting("Wave direction", 0, HORIZONTAL_WAVE_DIRECTIONS));
-        this.registerSetting(waveSpeed = new SliderSetting("Wave speed", 1.0, 0.1, 5.0, 0.1));
-        this.registerSetting(waveLength = new SliderSetting("Wave length", 1.0, 0.5, 5.0, 0.1));
+                catOpacity = new SliderSetting(arraylist, "Arraylist opacity", "%", 100.0, 0.0, 100.0, 1.0));
+        this.registerSetting(colorMode = new SliderSetting(arraylist, "Color mode", 0, COLOR_MODES));
+        this.registerSetting(
+                colorMode2 = new SliderSetting(arraylist, "Color mode", 0, COLOR_MODES2)
+                        .setProfileKey("Arraylist.Big cat color mode"));
+        this.registerSetting(theme = new SliderSetting(arraylist, "Theme", DEFAULT_THEME_INDEX, Theme.THEMES_SETTING));
+        this.registerSetting(hudColor = new ColorSetting(arraylist, "Color", 255, 255, 255));
+        this.registerSetting(hudColor2 = new ColorSetting(arraylist, "Color 2", 85, 85, 255));
+        this.registerSetting(waveAxis = new SliderSetting(arraylist, "Wave axis", 0, WAVE_AXES));
+        this.registerSetting(
+                verticalWaveDirection = new SliderSetting(arraylist, "Wave direction", 0, VERTICAL_WAVE_DIRECTIONS));
+        this.registerSetting(
+                horizontalWaveDirection = new SliderSetting(arraylist, "Wave direction", 0, HORIZONTAL_WAVE_DIRECTIONS)
+                        .setProfileKey("Arraylist.Horizontal wave direction"));
+        this.registerSetting(waveSpeed = new SliderSetting(arraylist, "Wave speed", 1.0, 0.1, 5.0, 0.1));
+        this.registerSetting(waveLength = new SliderSetting(arraylist, "Wave length", 1.0, 0.5, 5.0, 0.1));
         this.registerSetting(font = FontManager.createFontSetting("Font"));
-        this.registerSetting(fontSize = new SliderSetting("Scale", 1.0, 0.5, 2.0, 0.1));
-        this.registerSetting(outline = new SliderSetting("Outline", 0, OUTLINE_MODES));
+        font.groupSetting = arraylist;
+        this.registerSetting(fontSize = new SliderSetting(arraylist, "Scale", 1.0, 0.5, 2.0, 0.1));
+        this.registerSetting(outline = new SliderSetting(arraylist, "Outline", 0, OUTLINE_MODES));
         this.registerSetting(
                 editPosition = new ButtonSetting("Edit position", () -> mc.openScreen(new HUD.EditScreen())));
-        this.registerSetting(alignRight = new ButtonSetting("Align right", false));
-        this.registerSetting(alphabeticalSort = new ButtonSetting("Alphabetical sort", false));
-        this.registerSetting(drawBackground = new ButtonSetting("Draw background", false));
-        this.registerSetting(textShadow = new ButtonSetting("Text shadow", true));
-        this.registerSetting(lowercase = new ButtonSetting("Lowercase", false));
-        this.registerSetting(showInfo = new ButtonSetting("Show module info", true));
+        editPosition.group = arraylist;
+        this.registerSetting(alignRight = new ButtonSetting(arraylist, "Align right", false));
+        this.registerSetting(alphabeticalSort = new ButtonSetting(arraylist, "Alphabetical sort", false));
+        this.registerSetting(drawBackground = new ButtonSetting(arraylist, "Draw background", false));
+        this.registerSetting(textShadow = new ButtonSetting(arraylist, "Text shadow", true));
+        this.registerSetting(lowercase = new ButtonSetting(arraylist, "Lowercase", false));
+        this.registerSetting(showInfo = new ButtonSetting(arraylist, "Show module info", true));
+
+        GroupSetting notifications = new GroupSetting("Notifications");
+        this.registerSetting(notifications);
+        this.registerSetting(showNotifications = new ButtonSetting(notifications, "Show notifications", true));
+        this.registerSetting(
+                notificationStyle =
+                        new SliderSetting(notifications, "Notification style", 0, new String[] {"Classic", "Modern"}));
+        this.registerSetting(notificationCorner = new SliderSetting(notifications, "Notification corner", 3, CORNERS));
+        this.registerSetting(
+                notificationScale = new SliderSetting(notifications, "Notification scale", "x", 1.0, 0.6, 2.0, 0.05));
+        this.registerSetting(
+                notificationOpacity =
+                        new SliderSetting(notifications, "Notification opacity", "%", 100.0, 40.0, 100.0, 1.0));
+        this.registerSetting(
+                useNotificationBlacklist = new ButtonSetting(notifications, "Notification blacklist", false));
+        this.registerSetting(
+                notificationBlacklist =
+                        new StringListSetting(notifications, "Blacklisted modules", "Search modules...", 48));
+        this.guiUpdate();
     }
 
     @Override
     public void guiUpdate() {
-        boolean bigCat = arraylistStyle != null && (int) arraylistStyle.getInput() == 1;
-        for (Setting setting : this.getSettings()) {
-            if (setting == arraylistStyle || setting == showInfo) {
-                continue;
-            }
-            boolean catSetting = setting == catCorner || setting == catScale || setting == catOpacity;
-            setting.setVisible(catSetting == bigCat, this);
-        }
-        if (bigCat) {
+        boolean arraylist = showArraylist.isToggled();
+        boolean bigCat = isBigCatStyle();
+        int mode = activeColorModeIndex();
+        boolean vertical = hudWaveIsVertical();
+        boolean notifications = showNotifications.isToggled();
+        boolean blacklist = notifications && useNotificationBlacklist.isToggled();
+        int state = mode
+                | (arraylist ? 8 : 0)
+                | (bigCat ? 16 : 0)
+                | (vertical ? 32 : 0)
+                | (notifications ? 64 : 0)
+                | (blacklist ? 128 : 0);
+        if (visibilityState == state) {
             return;
         }
-
-        int mode = colorMode == null ? 0 : (int) colorMode.getInput();
-        boolean staticMode = mode == 0;
-        boolean gradientMode = mode == 1;
-        boolean rainbowMode = mode == 2;
-        boolean themeMode = mode == 3;
-        boolean showWaveSettings = gradientMode || rainbowMode;
-        boolean verticalAxis = waveAxis == null || (int) waveAxis.getInput() == 0;
-        if (theme != null) {
-            theme.setVisible(themeMode, this);
+        visibilityState = state;
+        boolean wave = arraylist && (mode == 1 || mode == 2);
+        // Apply every visibility change before rebuilding the Classic rows once.
+        if (showRows(arraylist, arraylistStyle, showInfo)
+                | showRows(arraylist && bigCat, catCorner, catScale, catOpacity, colorMode2)
+                | showRows(
+                        arraylist && !bigCat,
+                        colorMode,
+                        font,
+                        fontSize,
+                        outline,
+                        editPosition,
+                        alignRight,
+                        alphabeticalSort,
+                        drawBackground,
+                        textShadow,
+                        lowercase)
+                | showRows(arraylist && mode == THEME_COLOR_MODE, theme)
+                | showRows(arraylist && (mode == 0 || mode == 1), hudColor)
+                | showRows(arraylist && mode == 1, hudColor2)
+                | showRows(wave, waveAxis, waveSpeed, waveLength)
+                | showRows(wave && vertical, verticalWaveDirection)
+                | showRows(wave && !vertical, horizontalWaveDirection)
+                | showRows(
+                        notifications,
+                        notificationStyle,
+                        notificationCorner,
+                        notificationScale,
+                        notificationOpacity,
+                        useNotificationBlacklist)
+                | showRows(blacklist, notificationBlacklist)) {
+            Setting.reloadModuleRows(this);
         }
+    }
 
-        if (hudColor != null) {
-            hudColor.setVisible(staticMode || gradientMode, this);
+    private static boolean showRows(boolean visible, Setting... rows) {
+        boolean changed = false;
+        for (Setting row : rows) {
+            changed |= row.visible != visible;
+            row.visible = visible;
         }
+        return changed;
+    }
 
-        if (hudColor2 != null) {
-            hudColor2.setVisible(gradientMode, this);
-        }
+    /**
+     * HUD color for the Big cat arraylist. {@code row} is how many rows (fractional while animating) come before this
+     * one, {@code x} is the screen x of the bar or glyph being colored (only used by horizontal waves).
+     */
+    public static int getArraylistColor(double row, double x) {
+        int mode = colorModeIndex(colorMode2);
+        double phase =
+                usesHorizontalWave(mode) ? horizontalWavePhase(x) : row * getVerticalWaveStep(mode == THEME_COLOR_MODE);
+        return getHudColor(mode, phase);
+    }
 
-        if (waveAxis != null) {
-            waveAxis.setVisible(showWaveSettings, this);
-        }
+    /** Big cat "Category": the arraylist uses the accent of the category tab selected in the Big Cat GUI. */
+    public static boolean isCategoryColorMode() {
+        return colorModeIndex(colorMode2) == CATEGORY_COLOR_MODE;
+    }
 
-        if (verticalWaveDirection != null) {
-            verticalWaveDirection.setVisible(showWaveSettings && verticalAxis, this);
-        }
-
-        if (horizontalWaveDirection != null) {
-            horizontalWaveDirection.setVisible(showWaveSettings && !verticalAxis, this);
-        }
-
-        if (waveSpeed != null) {
-            waveSpeed.setVisible(showWaveSettings, this);
-        }
-
-        if (waveLength != null) {
-            waveLength.setVisible(showWaveSettings, this);
-        }
+    /** Whether the color changes along x, so arraylist text has to be colored per glyph. */
+    public static boolean isHorizontalWaveColor() {
+        return usesHorizontalWave(colorModeIndex(colorMode2));
     }
 
     /** Whether the HUD should use the Big Cat GUI's arraylist renderer. */
     public static boolean isCatArraylistSelected() {
-        Module hud = ModuleManager.getModule(HUD.class);
-        return hud != null && hud.isEnabled() && arraylistStyle != null && (int) arraylistStyle.getInput() == 1;
+        return isArraylistEnabled() && isBigCatStyle();
+    }
+
+    public static boolean isArraylistEnabled() {
+        return ModuleManager.hud != null && ModuleManager.hud.isEnabled() && showArraylist.isToggled();
+    }
+
+    public static boolean areNotificationsEnabled() {
+        return ModuleManager.hud != null && ModuleManager.hud.isEnabled() && showNotifications.isToggled();
+    }
+
+    public static boolean isNotificationBlacklisted(String moduleName) {
+        return useNotificationBlacklist.isToggled() && notificationBlacklist.containsEntry(moduleName);
     }
 
     @Override
@@ -195,7 +274,7 @@ public class HUD extends Module {
             }
 
             // The Big cat arraylist is drawn by BigCatGui (BigCatEvents).
-            if (mc.screen == null && !mc.options.debugEnabled && !isCatArraylistSelected()) {
+            if (showArraylist.isToggled() && mc.screen == null && !mc.options.debugEnabled && !isBigCatStyle()) {
                 syncPositionToResolution();
 
                 for (Module module : ModuleManager.organizedModules) {
@@ -360,7 +439,7 @@ public class HUD extends Module {
         if (module.isHidden()) {
             return true;
         } else {
-            return module == ModuleManager.commandLine ? true : module instanceof Velocity && removeVelocity;
+            return module instanceof Velocity && removeVelocity;
         }
     }
 
@@ -511,9 +590,11 @@ public class HUD extends Module {
     }
 
     private static double hudWavePhase(double verticalAccum, double rowCenterX) {
-        return hudWaveIsVertical()
-                ? verticalAccum
-                : rowCenterX * (0.35 / getWaveLengthMultiplier()) * getHorizontalWaveDirectionSign();
+        return hudWaveIsVertical() ? verticalAccum : horizontalWavePhase(rowCenterX);
+    }
+
+    private static double horizontalWavePhase(double x) {
+        return x * (HUD_WAVE_HORIZONTAL_X_SCALE / getWaveLengthMultiplier()) * getHorizontalWaveDirectionSign();
     }
 
     private static void drawHudText(
@@ -533,16 +614,19 @@ public class HUD extends Module {
     }
 
     private static boolean shouldUseHorizontalWaveText() {
-        if (colorMode == null) {
-            return false;
-        }
+        return usesHorizontalWave(activeColorModeIndex());
+    }
 
-        int mode = (int) colorMode.getInput();
-        return (mode == 1 || mode == 2) && !hudWaveIsVertical();
+    private static boolean usesHorizontalWave(int mode) {
+        return (mode == 1 || mode == 2) && (int) waveAxis.getInput() != 0;
     }
 
     private static double getVerticalWaveStep() {
-        if (isThemeMode()) {
+        return getVerticalWaveStep(isThemeMode());
+    }
+
+    private static double getVerticalWaveStep(boolean themeMode) {
+        if (themeMode) {
             return Theme.resolveThemeIndex(getSelectedThemeIndex()) == Theme.Rainbow.ordinal() ? 120.0 : 12.0;
         } else {
             return 12.0 / getWaveLengthMultiplier() * getVerticalWaveDirectionSign();
@@ -557,22 +641,22 @@ public class HUD extends Module {
         return horizontalWaveDirection != null && (int) horizontalWaveDirection.getInput() != 0 ? 1 : -1;
     }
 
+    /** Category mode has no single color, so it falls back to Color here (see getArraylistColor). */
     public static int getHudColor(double gradientOffset) {
-        if (colorMode == null) {
-            return 16777215;
+        return activeColorMode() == null ? 16777215 : getHudColor(activeColorModeIndex(), gradientOffset);
+    }
+
+    private static int getHudColor(int mode, double gradientOffset) {
+        if (mode == THEME_COLOR_MODE) {
+            return Theme.getGradient(getSelectedThemeIndex(), gradientOffset);
+        } else if (mode == 2) {
+            return getRainbowWaveColor(gradientOffset);
+        } else if (mode == 1 && hudColor != null && hudColor2 != null) {
+            Color firstColor = new Color(hudColor.getRed(), hudColor.getGreen(), hudColor.getBlue());
+            Color secondColor = new Color(hudColor2.getRed(), hudColor2.getGreen(), hudColor2.getBlue());
+            return getGradientWaveColor(firstColor, secondColor, gradientOffset);
         } else {
-            int mode = (int) colorMode.getInput();
-            if (mode == 3) {
-                return Theme.getGradient(getSelectedThemeIndex(), gradientOffset);
-            } else if (mode == 2) {
-                return getRainbowWaveColor(gradientOffset);
-            } else if (mode == 1 && hudColor != null && hudColor2 != null) {
-                Color firstColor = new Color(hudColor.getRed(), hudColor.getGreen(), hudColor.getBlue());
-                Color secondColor = new Color(hudColor2.getRed(), hudColor2.getGreen(), hudColor2.getBlue());
-                return getGradientWaveColor(firstColor, secondColor, gradientOffset);
-            } else {
-                return hudColor == null ? -1 : 0xFF000000 | hudColor.getRGB();
-            }
+            return hudColor == null ? -1 : 0xFF000000 | hudColor.getRGB();
         }
     }
 
@@ -600,13 +684,30 @@ public class HUD extends Module {
     }
 
     private static boolean isThemeMode() {
-        return colorMode != null && (int) colorMode.getInput() == 3;
+        return activeColorModeIndex() == THEME_COLOR_MODE;
     }
 
     private static int getSelectedThemeIndex() {
         return theme != null && theme.getOptions().length != 0
                 ? (int) Math.max(0.0, Math.min(theme.getOptions().length - 1, theme.getInput()))
                 : DEFAULT_THEME_INDEX;
+    }
+
+    private static boolean isBigCatStyle() {
+        return arraylistStyle != null && (int) arraylistStyle.getInput() == 1;
+    }
+
+    /** The Color mode slider of the selected arraylist style: colorMode2 (with Category) for Big cat. */
+    private static SliderSetting activeColorMode() {
+        return isBigCatStyle() ? colorMode2 : colorMode;
+    }
+
+    private static int activeColorModeIndex() {
+        return colorModeIndex(activeColorMode());
+    }
+
+    private static int colorModeIndex(SliderSetting mode) {
+        return mode == null ? 0 : (int) mode.getInput();
     }
 
     public static class EditScreen extends Screen {
@@ -873,10 +974,7 @@ public class HUD extends Module {
 
         private boolean empty() {
             for (Module module : ModuleManager.organizedModules) {
-                if (module.isEnabled()
-                        && !module.getName().equals("HUD")
-                        && !module.isHidden()
-                        && module != ModuleManager.commandLine) {
+                if (module.isEnabled() && !module.getName().equals("HUD") && !module.isHidden()) {
                     return false;
                 }
             }

@@ -67,10 +67,6 @@ public final class GlyphFontRenderer implements FeralFontRenderer {
         this.antiAlias = antiAlias;
         this.fontRenderContext = new FontRenderContext(new AffineTransform(), antiAlias, true);
 
-        for (int codePoint = 0; codePoint <= 255; codePoint++) {
-            this.defaultGlyphs[codePoint] = this.createGlyph((char) codePoint);
-        }
-
         this.rawTextTop = this.computeRawTextTop();
         this.rawTextBottom = this.computeRawTextBottom();
         this.fontHeight = Math.max(1.0F, (this.rawTextBottom - this.rawTextTop) * this.drawScale);
@@ -204,7 +200,7 @@ public final class GlyphFontRenderer implements FeralFontRenderer {
                         drawY += this.lineHeight * this.rawScale;
                     } else {
                         GlyphFontRenderer.GlyphData glyph = this.getGlyph(character);
-                        if (glyph.textureId != 0 && glyph.textureWidth > 0.0F && glyph.textureHeight > 0.0F) {
+                        if (glyph.hasVisiblePixels()) {
                             this.renderGlyph(glyph, drawX - 4.0F, drawY, activeColor);
                         }
 
@@ -267,7 +263,7 @@ public final class GlyphFontRenderer implements FeralFontRenderer {
                             glyphColor = applyShadowColor(glyphColor);
                         }
 
-                        if (glyph.textureId != 0 && glyph.textureWidth > 0.0F && glyph.textureHeight > 0.0F) {
+                        if (glyph.hasVisiblePixels()) {
                             this.renderGlyph(glyph, drawX - 4.0F, drawY, glyphColor);
                         }
 
@@ -286,6 +282,13 @@ public final class GlyphFontRenderer implements FeralFontRenderer {
     }
 
     private void renderGlyph(GlyphFontRenderer.GlyphData glyph, float x, float y, int color) {
+        if (glyph.textureId == 0) {
+            glyph.textureId = this.uploadTexture(glyph.image);
+            if (glyph.textureId == 0) {
+                return;
+            }
+            glyph.image = null;
+        }
         GlStateManager.bindTexture(glyph.textureId);
         float alpha = (color >>> 24 & 0xFF) / 255.0F;
         float red = (color >>> 16 & 0xFF) / 255.0F;
@@ -307,9 +310,11 @@ public final class GlyphFontRenderer implements FeralFontRenderer {
     private GlyphFontRenderer.GlyphData getGlyph(char character) {
         if (character >= 0 && character <= 255) {
             GlyphFontRenderer.GlyphData glyph = this.defaultGlyphs[character];
-            if (glyph != null) {
-                return glyph;
+            if (glyph == null) {
+                glyph = this.createGlyph(character);
+                this.defaultGlyphs[character] = glyph;
             }
+            return glyph;
         }
 
         return this.extendedGlyphs.computeIfAbsent(character, this::createGlyph);
@@ -317,11 +322,11 @@ public final class GlyphFontRenderer implements FeralFontRenderer {
 
     private GlyphFontRenderer.GlyphData createGlyph(char character) {
         if (this.destroyed) {
-            return new GlyphFontRenderer.GlyphData(0, 0.0F, 0.0F, 0.0F, 0.0F, 0, 0);
+            return new GlyphFontRenderer.GlyphData(null, 0.0F, 0.0F, 0.0F, 0.0F, 0, 0);
         }
 
         if (Character.isISOControl(character) && character != '\n') {
-            return new GlyphFontRenderer.GlyphData(0, 0.0F, 0.0F, 0.0F, 0.0F, 0, 0);
+            return new GlyphFontRenderer.GlyphData(null, 0.0F, 0.0F, 0.0F, 0.0F, 0, 0);
         }
 
         String glyphText = String.valueOf(character);
@@ -364,10 +369,9 @@ public final class GlyphFontRenderer implements FeralFontRenderer {
                 glyphGraphics.dispose();
             }
 
-            int textureId = this.uploadTexture(glyphImage);
             int[] visibleBounds = findVisibleRowBounds(glyphImage);
             return new GlyphFontRenderer.GlyphData(
-                    textureId,
+                    visibleBounds[1] > visibleBounds[0] ? glyphImage : null,
                     textureWidth,
                     textureHeight,
                     rawAdvance,
@@ -380,6 +384,10 @@ public final class GlyphFontRenderer implements FeralFontRenderer {
     }
 
     private int uploadTexture(BufferedImage image) {
+        int textureId = GL11.glGenTextures();
+        if (textureId == 0) {
+            return 0;
+        }
         int width = image.getWidth();
         int height = image.getHeight();
         int[] pixels = image.getRGB(0, 0, width, height, new int[width * height], 0, width);
@@ -396,7 +404,6 @@ public final class GlyphFontRenderer implements FeralFontRenderer {
         }
 
         ((Buffer) byteBuffer).flip();
-        int textureId = GL11.glGenTextures();
         GlStateManager.bindTexture(textureId);
         GL11.glTexParameteri(3553, 10241, 9729);
         GL11.glTexParameteri(3553, 10240, 9729);
@@ -567,7 +574,9 @@ public final class GlyphFontRenderer implements FeralFontRenderer {
     }
 
     private static final class GlyphData {
-        private final int textureId;
+        private int textureId;
+        // Metrics stay available without uploading anything; only painted glyphs need a texture.
+        private BufferedImage image;
         private final float textureWidth;
         private final float textureHeight;
         private final float rawAdvance;
@@ -576,14 +585,14 @@ public final class GlyphFontRenderer implements FeralFontRenderer {
         private final int visibleBottom;
 
         private GlyphData(
-                int textureId,
+                BufferedImage image,
                 float textureWidth,
                 float textureHeight,
                 float rawAdvance,
                 float advance,
                 int visibleTop,
                 int visibleBottom) {
-            this.textureId = textureId;
+            this.image = image;
             this.textureWidth = textureWidth;
             this.textureHeight = textureHeight;
             this.rawAdvance = rawAdvance;

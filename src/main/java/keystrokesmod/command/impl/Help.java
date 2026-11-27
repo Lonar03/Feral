@@ -36,8 +36,12 @@ public class Help extends Command {
         this.reply(" &b" + prefix + "resetgui &7Reset GUI positions.");
         this.reply(" &b" + prefix + "toggle/t [module] &7Toggle a module.");
         this.reply(" &b" + prefix + "unbind/ub [module] &7Remove module bind.");
-        this.reply(" &b" + prefix + "show all/showall &7Show all modules in HUD.");
-        this.reply(" &b" + prefix + "hide all/hideall &7Hide all modules from HUD.");
+        this.reply(" &b" + prefix + "show [module/all] &7Show a module (or all) in HUD.");
+        this.reply(" &b" + prefix + "hide [module/all] &7Hide a module (or all) from HUD.");
+        this.reply(" &b" + prefix + "duels [player] &7Look up Duels stats.");
+        this.reply(" &b" + prefix + "duels key [key]/nick [name/reset] &7Set API key / your nick.");
+        this.reply(" &b" + prefix + "setspeed [fly/bhop/speed] [value] &7Set speed past the slider (0-100).");
+        this.reply(" &b" + prefix + "setvelocity [h/v] [value] &7Set velocity past the slider (-100-300).");
         this.reply(" &b" + prefix + "timer [set/reset/value] (value) &7Manage timer speed.");
         this.reply(" &b" + prefix + "script load &7Reload scripts.");
         this.reply(" &b" + prefix + "debug (mixin/background) &7Toggle debug output.");

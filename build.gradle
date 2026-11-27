@@ -49,7 +49,7 @@ processResources {
 	}
 }
 
-// Same code style as MeowerClient. `./gradlew build` fails on unformatted code, run `./gradlew spotlessApply` first.
+// `./gradlew build` fails on unformatted code, run `./gradlew spotlessApply` first.
 spotless {
 	java {
 		target 'src/main/java/**/*.java'

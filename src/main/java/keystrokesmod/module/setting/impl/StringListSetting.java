@@ -38,14 +38,21 @@ public class StringListSetting extends Setting {
         return Collections.unmodifiableList(this.entries);
     }
 
+    public boolean containsEntry(String entry) {
+        for (String existing : this.entries) {
+            if (existing.equalsIgnoreCase(entry)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public boolean addEntry(String entry) {
         if (entry != null && !entry.trim().isEmpty()) {
             String trimmed = entry.trim();
 
-            for (String existing : this.entries) {
-                if (existing.equalsIgnoreCase(trimmed)) {
-                    return false;
-                }
+            if (containsEntry(trimmed)) {
+                return false;
             }
 
             this.entries.add(trimmed);

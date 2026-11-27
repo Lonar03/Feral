@@ -9,6 +9,7 @@ import java.util.IdentityHashMap;
 import java.util.Map;
 import keystrokesmod.Feral;
 import keystrokesmod.clickgui.ClickGui;
+import keystrokesmod.clickgui.GuiText;
 import keystrokesmod.clickgui.components.Component;
 import keystrokesmod.module.Module;
 import keystrokesmod.module.impl.client.Gui;
@@ -348,11 +349,12 @@ public class ModuleComponent extends Component {
 
         boolean scissorRequired = this.smoothTimer != null;
         FeralFontRenderer titleRenderer = Gui.getClickGuiHeaderFontRenderer();
+        String title = GuiText.fit(titleRenderer, this.mod.getName(), this.categoryComponent.getWidth() - 8f);
         float textX = this.categoryComponent.getX()
                 + this.categoryComponent.getWidth() / 2.0F
-                - titleRenderer.getStringWidth(this.mod.getName()) / 2.0F;
-        float textY = this.categoryComponent.getY() + this.yPos + 4.0F;
-        titleRenderer.drawString(this.mod.getName(), textX, textY, button_rgb, true);
+                - titleRenderer.getStringWidth(title) / 2.0F;
+        float textY = this.categoryComponent.getY() + this.yPos + (16f - titleRenderer.getFontHeight()) / 2f;
+        titleRenderer.drawString(title, textX, textY, button_rgb, true);
         if (scissorRequired) {
             Window sr = new Window(Minecraft.getInstance());
             int scale = sr.getScale();

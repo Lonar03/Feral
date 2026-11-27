@@ -1,19 +1,18 @@
 package keystrokesmod.clickgui.components.impl;
 
 import keystrokesmod.Feral;
+import keystrokesmod.clickgui.ClassicIcons;
+import keystrokesmod.clickgui.GuiText;
 import keystrokesmod.clickgui.components.Component;
 import keystrokesmod.module.Module;
 import keystrokesmod.module.impl.client.Gui;
 import keystrokesmod.module.setting.impl.KeySetting;
-import keystrokesmod.utility.RenderUtils;
 import keystrokesmod.utility.Theme;
 import keystrokesmod.utility.font.FeralFontRenderer;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.opengl.GL11;
 
 public class BindComponent extends Component {
-    private static final String EYE_ICON_PATH = "/assets/keystrokesmod/textures/gui/eye.png";
-    private static final String EYE_OFF_ICON_PATH = "/assets/keystrokesmod/textures/gui/eye_off.png";
     private static final int EYE_ICON_PADDING = 2;
     public boolean isBinding;
     public ModuleComponent moduleComponent;
@@ -61,16 +60,14 @@ public class BindComponent extends Component {
         if (this.keySetting == null) {
             this.drawString(
                     renderer,
-                    !this.moduleComponent.mod.canBeEnabled() && this.moduleComponent.mod.script == null
+                    !this.moduleComponent.mod.canBeBound() && this.moduleComponent.mod.script == null
                             ? "Module cannot be bound."
                             : (this.isBinding
                                     ? "Press a key..."
                                     : "Current bind: '§e" + this.getKeyAsStr(false) + "§r'"));
         } else {
             renderer.drawString(
-                    this.isBinding
-                            ? "Press a key..."
-                            : this.keySetting.getName() + ": '§e" + this.getKeyAsStr(true) + "§r'",
+                    this.fitBindText(renderer, this.getBindDisplayString()),
                     (this.moduleComponent.categoryComponent.getX() + 4.0F) * 2.0F + this.xOffset,
                     (this.moduleComponent.categoryComponent.getY() + this.o + (this.keySetting == null ? 3 : 4)) * 2.0F,
                     Theme.getGradient(Theme.DESCRIPTOR[0], Theme.DESCRIPTOR[1], 0.0),
@@ -88,10 +85,8 @@ public class BindComponent extends Component {
             int themeColor = !this.moduleComponent.mod.hidden
                     ? Theme.getGradient(Theme.DESCRIPTOR[0], Theme.DESCRIPTOR[1], 0.0)
                     : Theme.getGradient(Theme.HIDDEN_BIND[0], Theme.HIDDEN_BIND[1], 0.0);
-            String iconPath = this.moduleComponent.mod.isHidden()
-                    ? "/assets/keystrokesmod/textures/gui/eye_off.png"
-                    : "/assets/keystrokesmod/textures/gui/eye.png";
-            RenderUtils.drawIcon(RenderUtils.getIcon(iconPath), iconX, iconY, iconSize, themeColor);
+            (this.moduleComponent.mod.isHidden() ? ClassicIcons.Mask.EYE_OFF : ClassicIcons.Mask.EYE)
+                    .draw(iconX, iconY, iconSize, themeColor);
         }
     }
 
@@ -115,12 +110,12 @@ public class BindComponent extends Component {
 
                 return true;
             } else {
-                if (this.moduleComponent.mod.canBeEnabled() && button == 0 && this.overBindText(x, y)) {
+                if (this.moduleComponent.mod.canBeBound() && button == 0 && this.overBindText(x, y)) {
                     this.isBinding = !this.isBinding;
                     return true;
                 }
 
-                if (this.moduleComponent.mod.canBeEnabled() && button > 1 && this.isBinding) {
+                if (button > 1 && this.isBinding) {
                     if (this.keySetting != null) {
                         this.keySetting.setKey(button + 1000);
                     } else {
@@ -167,7 +162,7 @@ public class BindComponent extends Component {
                     ? "Press a key..."
                     : this.keySetting.getName() + ": '§e" + this.getKeyAsStr(true) + "§r'";
         } else {
-            return !this.moduleComponent.mod.canBeEnabled() && this.moduleComponent.mod.script == null
+            return !this.moduleComponent.mod.canBeBound() && this.moduleComponent.mod.script == null
                     ? "Module cannot be bound."
                     : (this.isBinding ? "Press a key..." : "Current bind: '§e" + this.getKeyAsStr(false) + "§r'");
         }
@@ -178,7 +173,7 @@ public class BindComponent extends Component {
         FeralFontRenderer renderer = Gui.getClickGuiSettingFontRenderer();
         float left = this.getBindTextX();
         float top = this.getBindTextY();
-        float width = renderer.getStringWidth(text) * 0.5F;
+        float width = renderer.getStringWidth(this.fitBindText(renderer, text)) * 0.5F;
         float height = renderer.getFontHeight() * 0.5F;
         return mouseX >= left && mouseX < left + width && mouseY >= top && mouseY < top + height;
     }
@@ -186,6 +181,12 @@ public class BindComponent extends Component {
     private int getEyeIconSize() {
         int fontH = Math.round(Gui.getClickGuiSettingFontRenderer().getFontHeight() * 0.5F);
         return Math.max(6, fontH - 1);
+    }
+
+    private String fitBindText(FeralFontRenderer renderer, String text) {
+        float inset = this.keySetting == null ? this.getEyeIconSize() + 6f : 4f;
+        return GuiText.fit(
+                renderer, text, (this.moduleComponent.categoryComponent.getWidth() - 4f - inset) * 2f - this.xOffset);
     }
 
     private float getEyeIconX(int iconSize) {
@@ -228,7 +229,7 @@ public class BindComponent extends Component {
                     this.moduleComponent.mod.setBind(keybind);
                 }
             } else if (this.moduleComponent.mod instanceof Gui) {
-                this.moduleComponent.mod.setBind(54);
+                this.moduleComponent.mod.setBind(Gui.DEFAULT_KEY);
             } else if (this.keySetting != null) {
                 this.keySetting.setKey(0);
             } else {
@@ -277,7 +278,7 @@ public class BindComponent extends Component {
 
     private void drawString(FeralFontRenderer renderer, String s) {
         renderer.drawString(
-                s,
+                this.fitBindText(renderer, s),
                 (this.moduleComponent.categoryComponent.getX() + 4.0F) * 2.0F + this.xOffset,
                 (this.moduleComponent.categoryComponent.getY() + this.o + (this.keySetting == null ? 3 : 4)) * 2.0F,
                 Theme.getGradient(Theme.DESCRIPTOR[0], Theme.DESCRIPTOR[1], 0.0),

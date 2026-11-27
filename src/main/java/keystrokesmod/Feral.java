@@ -106,7 +106,7 @@ public class Feral {
                 MouseHelper.updateWheelCache();
 
                 for (Module module : getModuleManager().getModules()) {
-                    if (mc.screen == null && module.canBeEnabled()) {
+                    if (mc.screen == null && module.canBeBound()) {
                         module.onKeyBind();
                     } else if (mc.screen instanceof ClickGui) {
                         module.guiUpdate();
@@ -201,7 +201,7 @@ public class Feral {
             MouseHelper.updateWheelCache();
             if (mc.screen == null) {
                 for (Module module : getModuleManager().getModules()) {
-                    if (module.canBeEnabled()) {
+                    if (module.canBeBound()) {
                         module.onKeyBind();
                     }
                 }

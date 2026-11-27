@@ -2,6 +2,7 @@ package keystrokesmod.clickgui.components.impl;
 
 import java.awt.Color;
 import keystrokesmod.Feral;
+import keystrokesmod.clickgui.GuiText;
 import keystrokesmod.clickgui.components.Component;
 import keystrokesmod.module.Module;
 import keystrokesmod.module.impl.client.Gui;
@@ -35,8 +36,13 @@ public class ButtonComponent extends Component {
         GL11.glPushMatrix();
         GL11.glScaled(0.5, 0.5, 0.5);
         renderer.drawString(
-                (this.buttonSetting.isMethodButton ? "[=]  " : (this.buttonSetting.isToggled() ? "[+]  " : "[-]  "))
-                        + this.buttonSetting.getName(),
+                GuiText.fit(
+                        renderer,
+                        (this.buttonSetting.isMethodButton
+                                        ? "[=]  "
+                                        : (this.buttonSetting.isToggled() ? "[+]  " : "[-]  "))
+                                + this.buttonSetting.getName(),
+                        (this.moduleComponent.categoryComponent.getWidth() - 8f) * 2f - this.xOffset),
                 (this.moduleComponent.categoryComponent.getX() + 4.0F) * 2.0F + this.xOffset,
                 (this.moduleComponent.categoryComponent.getY() + this.o + 4.0F) * 2.0F,
                 this.buttonSetting.isToggled() ? ENABLED_COLOR : -1,

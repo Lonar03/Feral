@@ -4,6 +4,7 @@ import java.awt.Color;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import keystrokesmod.Feral;
+import keystrokesmod.clickgui.GuiText;
 import keystrokesmod.clickgui.components.Component;
 import keystrokesmod.module.Module;
 import keystrokesmod.module.ModuleManager;
@@ -101,17 +102,21 @@ public class SliderComponent extends Component {
 
         float labelX = (this.moduleComponent.categoryComponent.getX() + 4.0F) * 2.0F + this.xOffset;
         float labelY = (this.moduleComponent.categoryComponent.getY() + this.o + 3.0F) * 2.0F;
+        float labelWidth = barRight * 2f - labelX;
         if (this.shouldPreviewFontSlider()) {
-            this.drawFontPreview(labelX, labelY, valueText, suffix);
+            this.drawFontPreview(labelX, labelY, valueText, suffix, labelWidth);
         } else {
-            Gui.getClickGuiSettingFontRenderer()
-                    .drawString(
-                            this.sliderSetting.getName() + ": " + (this.sliderSetting.isString ? "§e" : "§b")
-                                    + valueText + suffix,
-                            labelX,
-                            labelY,
-                            -1,
-                            true);
+            FeralFontRenderer renderer = Gui.getClickGuiSettingFontRenderer();
+            String value = (this.sliderSetting.isString ? "§e" : "§b") + valueText + suffix;
+            String label = this.sliderSetting.getName() + ": ";
+            if (renderer.getStringWidth(label + value) > labelWidth) {
+                value = GuiText.fit(renderer, value, labelWidth * 0.6f);
+                label = GuiText.fit(renderer, label, labelWidth - renderer.getStringWidth(value) - 4f);
+                if (!label.endsWith(" ")) {
+                    label += " ";
+                }
+            }
+            renderer.drawString(GuiText.fit(renderer, label + value, labelWidth), labelX, labelY, -1, true);
         }
 
         GL11.glPopMatrix();
@@ -295,14 +300,19 @@ public class SliderComponent extends Component {
         return this.shouldCommitOnRelease() && this.heldDown ? this.targetValue : this.sliderSetting.getInput();
     }
 
-    private void drawFontPreview(float labelX, float labelY, String valueText, String suffix) {
+    private void drawFontPreview(float labelX, float labelY, String valueText, String suffix, float width) {
         String prefix = this.sliderSetting.getName() + ": ";
         Minecraft mc = Minecraft.getInstance();
         mc.textRenderer.drawWithShadow(prefix, labelX, labelY, -1);
         FeralFontRenderer previewRenderer = FontManager.getClickGuiSettingRenderer(valueText);
         float valueX = labelX + mc.textRenderer.getWidth(prefix);
         float valueY = labelY - (previewRenderer.getFontHeight() - mc.textRenderer.fontHeight) / 2.0F;
-        previewRenderer.drawString(valueText + suffix, valueX, valueY, 16777215, true);
+        previewRenderer.drawString(
+                GuiText.fit(previewRenderer, valueText + suffix, width - (valueX - labelX)),
+                valueX,
+                valueY,
+                16777215,
+                true);
     }
 
     @Override

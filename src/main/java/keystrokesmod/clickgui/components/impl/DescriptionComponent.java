@@ -1,5 +1,6 @@
 package keystrokesmod.clickgui.components.impl;
 
+import keystrokesmod.clickgui.GuiText;
 import keystrokesmod.clickgui.components.Component;
 import keystrokesmod.module.impl.client.Gui;
 import keystrokesmod.module.setting.impl.DescriptionSetting;
@@ -28,7 +29,7 @@ public class DescriptionComponent extends Component {
         GL11.glPushMatrix();
         GL11.glScaled(0.5, 0.5, 0.5);
         renderer.drawString(
-                this.desc.getDesc(),
+                GuiText.fit(renderer, this.desc.getDesc(), (this.p.categoryComponent.getWidth() - 8f) * 2f),
                 (this.p.categoryComponent.getX() + 4.0F) * 2.0F,
                 (this.p.categoryComponent.getY() + this.o + 4.0F) * 2.0F,
                 Theme.getGradient(Theme.DESCRIPTOR[0], Theme.DESCRIPTOR[1], 0.0),

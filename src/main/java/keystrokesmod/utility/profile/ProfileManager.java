@@ -299,6 +299,8 @@ public class ProfileManager implements IMinecraftInstance {
         if (module.canBeEnabled) {
             moduleInformation.addProperty("enabled", module.isEnabled());
             moduleInformation.addProperty("hidden", module.isHidden());
+        }
+        if (module.canBeEnabled || module.canBeBound()) {
             moduleInformation.addProperty("keybind", module.getKeycode());
         }
 
@@ -476,19 +478,14 @@ public class ProfileManager implements IMinecraftInstance {
                         loadedRelationshipsState = true;
                     }
 
-                    if (module.canBeEnabled()) {
-                        ProfileManager.RequestedModuleState requestedState = requestedModuleStates.get(module);
-                        if (requestedState == null) {
-                            requestedState = new ProfileManager.RequestedModuleState(false, 0);
-                            requestedModuleStates.put(module, requestedState);
-                        }
-
-                        if (moduleInformation.has("enabled")) {
+                    ProfileManager.RequestedModuleState requestedState = requestedModuleStates.get(module);
+                    if (requestedState != null) {
+                        if (module.canBeEnabled() && moduleInformation.has("enabled")) {
                             requestedState.enabled =
                                     moduleInformation.get("enabled").getAsBoolean();
                         }
 
-                        if (moduleInformation.has("hidden")) {
+                        if (module.canBeEnabled() && moduleInformation.has("hidden")) {
                             requestedState.hidden =
                                     moduleInformation.get("hidden").getAsBoolean();
                         }
@@ -502,7 +499,7 @@ public class ProfileManager implements IMinecraftInstance {
             }
         }
 
-        RavenProfileCompat.moveGuiArraylist(loadedModuleData);
+        RavenProfileCompat.moveHudSettings(loadedModuleData);
 
         if (!loadedRelationshipsState && ModuleManager.relationships != null && Feral.playerRelationsManager != null) {
             ProfileManager.RequestedModuleState relationshipsState =
@@ -748,8 +745,10 @@ public class ProfileManager implements IMinecraftInstance {
         Map<Module, ProfileManager.RequestedModuleState> requestedModuleStates = new HashMap<>();
 
         for (Module module : modules) {
-            if (module.canBeEnabled()) {
-                requestedModuleStates.put(module, new ProfileManager.RequestedModuleState(false, 0));
+            if (module.canBeEnabled() || module.canBeBound()) {
+                requestedModuleStates.put(
+                        module,
+                        new ProfileManager.RequestedModuleState(false, module instanceof Gui ? Gui.DEFAULT_KEY : 0));
             }
         }
 
