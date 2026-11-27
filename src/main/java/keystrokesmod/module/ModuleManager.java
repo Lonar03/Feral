@@ -402,7 +402,7 @@ public class ModuleManager {
         this.addModule(autoWrath = new AutoWrath());
         this.addModule(bossTracker = new BossTracker());
         this.addModule(easyRevive = new EasyRevive());
-        this.addModule(fivePlayerLobby = new FivePlayerLobby());
+//        this.addModule(fivePlayerLobby = new FivePlayerLobby()); // commented cuz W.I.P. will be added back once theres a working version. 
         this.addModule(gbMap = new GBMap());
         this.addModule(new EasterEggs());
         this.addModule(noReload = new NoReload());
