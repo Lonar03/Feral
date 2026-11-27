@@ -1,5 +1,6 @@
 package keystrokesmod.clickgui.components.impl;
 
+import keystrokesmod.clickgui.GuiText;
 import keystrokesmod.clickgui.components.Component;
 import keystrokesmod.module.impl.client.Gui;
 import keystrokesmod.module.setting.impl.GroupSetting;
@@ -72,7 +73,14 @@ public class GroupComponent extends Component {
         GL11.glRotatef(90.0F * progress, 0.0F, 0.0F, 1.0F);
         this.drawChevron(chevronSize);
         GL11.glPopMatrix();
-        this.drawString(renderer, "]  " + this.setting.getName(), strX + firstBracketWidth + arrowWidth, strY);
+        this.drawString(
+                renderer,
+                GuiText.fit(
+                        renderer,
+                        "]  " + this.setting.getName(),
+                        (this.component.categoryComponent.getWidth() - 9f) * 2f - firstBracketWidth - arrowWidth),
+                strX + firstBracketWidth + arrowWidth,
+                strY);
         GL11.glPopMatrix();
     }
 

@@ -40,6 +40,7 @@ public class ClickGui extends Screen {
     private double previousScale;
     private static boolean isNotFirstOpen;
     private boolean pendingScaleRefresh;
+    private boolean liteModeAtModuleReload;
     private SliderSetting heldArrowSlider;
     private int heldArrowDirection;
     private long arrowHoldStartedAt;
@@ -51,6 +52,7 @@ public class ClickGui extends Screen {
 
     public ClickGui() {
         categories = new ArrayList<>();
+        this.liteModeAtModuleReload = Gui.isLiteModeEnabled();
         int y = 5;
         Module.category[] values;
         int length = (values = Module.category.values()).length;
@@ -114,6 +116,14 @@ public class ClickGui extends Screen {
                 categoryComponent.reloadModules();
             }
         }
+        this.liteModeAtModuleReload = Gui.isLiteModeEnabled();
+    }
+
+    void refreshModulesIfLiteModeChanged() {
+        // A script can set Lite mode without firing the GUI's button callback.
+        if (this.liteModeAtModuleReload != Gui.isLiteModeEnabled()) {
+            this.reloadModulesForCurrentMode();
+        }
     }
 
     private List<CategoryComponent> getCategoriesInRenderOrder() {
@@ -141,7 +151,6 @@ public class ClickGui extends Screen {
         if (Gui.isBigCatStyle()) {
             // Switched to the big cat (or opened some other way while it's selected): show the window instead.
             this.minecraft.openScreen(null);
-            this.reloadModulesForCurrentMode();
             BigCatGui.INSTANCE.requestOpen();
             return;
         }

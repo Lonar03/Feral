@@ -17,14 +17,20 @@ public abstract class Setting {
     public void setVisible(boolean visible, Module module) {
         if (visible != this.visible) {
             this.visible = visible;
+            reloadModuleRows(module);
+        }
+    }
 
-            for (CategoryComponent categoryComponent : ClickGui.categories) {
-                if (categoryComponent.category == module.moduleCategory()) {
-                    for (ModuleComponent moduleComponent : categoryComponent.modules) {
-                        if (moduleComponent.mod.getName().equals(module.getName())) {
-                            moduleComponent.reloadSettings();
-                            break;
-                        }
+    public static void reloadModuleRows(Module module) {
+        if (ClickGui.categories == null) {
+            return;
+        }
+        for (CategoryComponent categoryComponent : ClickGui.categories) {
+            if (categoryComponent.category == module.moduleCategory()) {
+                for (ModuleComponent moduleComponent : categoryComponent.modules) {
+                    if (moduleComponent.mod.getName().equals(module.getName())) {
+                        moduleComponent.reloadSettings();
+                        return;
                     }
                 }
             }

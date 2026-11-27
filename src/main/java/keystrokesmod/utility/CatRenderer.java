@@ -4,7 +4,7 @@ import java.nio.FloatBuffer;
 import java.util.Arrays;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.render.Window;
-import net.minecraft.client.render.platform.GlStateManager;
+import net.minecraft.client.render.platform.GLX;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 
@@ -67,7 +67,7 @@ public final class CatRenderer {
         GL11.glDisable(GL11.GL_DEPTH_TEST);
         GL11.glDisable(GL11.GL_LIGHTING);
         GL11.glEnable(GL11.GL_BLEND);
-        GlStateManager.blendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+        GLX.blendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
         GL11.glShadeModel(GL11.GL_FLAT);
         GL11.glHint(GL11.GL_LINE_SMOOTH_HINT, GL11.GL_NICEST);
         pixelsPerUnit = measurePixelsPerUnit();
@@ -515,6 +515,10 @@ public final class CatRenderer {
         return new Space(headCx - 120.0F * k, headCy - 120.0F * k, k);
     }
 
+    public static float windowTailAnchorY(float y, float height) {
+        return y + height * 0.537F;
+    }
+
     /** True when the cursor is over the window cat's head (its ears twitch while it is). */
     public static boolean isOverWindowCatHead(float mx, float my, float winX, float winY, float winW, float scale) {
         Space sp = windowHeadSpace(winX, winY, winW, scale);
@@ -530,19 +534,28 @@ public final class CatRenderer {
      * Draw the window right after this.
      */
     public static void drawWindowCatBehind(
-            float winX, float winY, float winW, float winH, float scale, int accent, boolean headHovered) {
+            float winX,
+            float winY,
+            float winW,
+            float winH,
+            float headScale,
+            float tailScale,
+            int accent,
+            boolean headHovered) {
         long now = System.currentTimeMillis();
-        float k = windowK(scale);
         begin();
         try {
             // Tail, anchored just inside the right edge a little below the middle.
-            float anchorX = winX + winW - 4.0F * k;
-            float anchorY = winY + winH * 0.537F;
-            Space tail = new Space(anchorX - 6.0F * k, anchorY - 20.0F * k, k);
-            GL11.glPushMatrix();
-            rotateAround(anchorX, anchorY, sway(now, 3000L, -4.0F, 7.0F));
-            fluffyTail(tail, WIN_TAIL, 15.5F, 13.0F, 11.0F, 9.0F, accent, WINDOW_CAT_FUR);
-            GL11.glPopMatrix();
+            if (tailScale > 0f) {
+                float k = windowK(tailScale);
+                float anchorX = winX + winW - 4.0F * k;
+                float anchorY = windowTailAnchorY(winY, winH);
+                Space tail = new Space(anchorX - 6.0F * k, anchorY - 20.0F * k, k);
+                GL11.glPushMatrix();
+                rotateAround(anchorX, anchorY, sway(now, 3000L, -4.0F, 7.0F));
+                fluffyTail(tail, WIN_TAIL, 15.5F, 13.0F, 11.0F, 9.0F, accent, WINDOW_CAT_FUR);
+                GL11.glPopMatrix();
+            }
 
             // Head.
             if (headHovered) {
@@ -553,7 +566,10 @@ public final class CatRenderer {
                 windowHeadHoverStart = -1L;
             }
             long since = windowHeadHoverStart < 0L ? Long.MAX_VALUE : now - windowHeadHoverStart;
-            Space head = windowHeadSpace(winX, winY, winW, scale);
+            if (headScale <= 0f) {
+                return;
+            }
+            Space head = windowHeadSpace(winX, winY, winW, headScale);
             Space mirrored = head.mirrored(120);
             ear(
                     head,
@@ -599,15 +615,21 @@ public final class CatRenderer {
     }
 
     /** Concept 2, the parts in front of the window: front paws gripping the top edge, back paws under it. */
-    public static void drawWindowCatFront(float winX, float winY, float winW, float winH, float scale, int accent) {
-        float k = windowK(scale);
+    public static void drawWindowCatFront(
+            float winX, float winY, float winW, float winH, float frontScale, float backScale, int accent) {
         float centerX = winX + winW / 2.0F;
         begin();
         try {
-            frontPaw(new Space(centerX - 155.0F * k, winY - 24.0F * k, k), accent);
-            frontPaw(new Space(centerX + 65.0F * k, winY - 24.0F * k, k), accent);
-            backPaw(new Space(winX + 30.0F * k, winY + winH - 14.0F * k, k), accent);
-            backPaw(new Space(winX + winW - 110.0F * k, winY + winH - 14.0F * k, k), accent);
+            if (frontScale > 0f) {
+                float k = windowK(frontScale);
+                frontPaw(new Space(centerX - 155.0F * k, winY - 24.0F * k, k), accent);
+                frontPaw(new Space(centerX + 65.0F * k, winY - 24.0F * k, k), accent);
+            }
+            if (backScale > 0f) {
+                float k = windowK(backScale);
+                backPaw(new Space(winX + 30.0F * k, winY + winH - 14.0F * k, k), accent);
+                backPaw(new Space(winX + winW - 110.0F * k, winY + winH - 14.0F * k, k), accent);
+            }
         } finally {
             end();
         }

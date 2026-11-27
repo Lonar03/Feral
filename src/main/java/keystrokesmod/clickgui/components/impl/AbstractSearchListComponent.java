@@ -2,20 +2,14 @@ package keystrokesmod.clickgui.components.impl;
 
 import java.util.List;
 import keystrokesmod.Feral;
+import keystrokesmod.clickgui.ClassicIcons;
 import keystrokesmod.clickgui.animation.ScrollOffsetAnimation;
 import keystrokesmod.module.impl.client.Gui;
 import keystrokesmod.utility.RenderUtils;
-import keystrokesmod.utility.Theme;
 import keystrokesmod.utility.Timer;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.render.entity.ItemRenderer;
-import net.minecraft.client.render.platform.GlStateManager;
-import net.minecraft.client.render.platform.Lighting;
 import net.minecraft.item.ItemStack;
-import net.minecraft.resource.Identifier;
 
 public abstract class AbstractSearchListComponent extends AbstractTextInputComponent {
-    private static final String CLOSE_ICON_PATH = "/assets/keystrokesmod/textures/gui/close.png";
     private static final String ARROW_ICON_PATH = "/assets/keystrokesmod/textures/gui/arrow_left.png";
     protected static final float ANIMATION_DURATION = 250.0F;
     protected static final int MAX_VISIBLE_RESULTS = 7;
@@ -264,65 +258,36 @@ public abstract class AbstractSearchListComponent extends AbstractTextInputCompo
 
     protected final void renderBackRow(float left, float right, float rowTop, int bgColor, String groupName) {
         RenderUtils.drawRect(left, rowTop, right, rowTop + 12.0F - 1.0F, bgColor);
-        Identifier arrow = RenderUtils.getIcon("/assets/keystrokesmod/textures/gui/arrow_left.png");
-        if (arrow != null) {
-            float iconX = left + 2.0F;
-            float iconY = rowTop + 2.5F;
-            RenderUtils.drawIcon(arrow, iconX, iconY, 6, -1);
-        }
+        ClassicIcons.Mask.BACK.draw(left + 2f, rowTop + 2.5f, 6f, -1);
 
-        this.drawListRowText(groupName != null ? groupName : "Back", left + 13.0F, rowTop, -3355444);
+        this.drawListRowText(groupName != null ? groupName : "Back", left + 13.0F, rowTop, right - 3f, -3355444);
     }
 
     protected final void renderStandardRow(
             String label, ItemStack stack, float left, float right, float rowTop, int bgColor, boolean showClose) {
         RenderUtils.drawRect(left, rowTop, right, rowTop + 12.0F - 1.0F, bgColor);
         this.renderItemInRow(stack, left + 2.0F, rowTop);
-        this.drawListRowText(label != null ? label : "", left + 13.0F, rowTop, -3355444);
+        this.drawListRowText(
+                label != null ? label : "", left + 13.0F, rowTop, right - (showClose ? 11f : 3f), -3355444);
         if (showClose) {
             this.renderCloseIcon(right, rowTop);
         }
     }
 
-    protected final void drawListRowText(String text, float x, float rowTop, int color) {
-        drawScaledText(text, x, centeredScaledTextY(rowTop, 11.0F, 0.56F) + 0.56F, color, 0.56F);
+    protected final void drawListRowText(String text, float x, float rowTop, float right, int color) {
+        drawScaledText(text, x, centeredScaledTextY(rowTop, 11.0F, 0.56F), color, 0.56F, right);
     }
 
     protected final void renderCloseIcon(float right, float rowTop) {
-        Identifier close = RenderUtils.getIcon("/assets/keystrokesmod/textures/gui/close.png");
-        if (close != null) {
-            float closeX = right - 6.0F - 3.0F;
-            float closeY = rowTop + 2.5F;
-            int closeColor = Theme.getGradient(Theme.HIDDEN_BIND[0], Theme.HIDDEN_BIND[1], 0.0);
-            RenderUtils.drawIcon(close, closeX, closeY, 6, closeColor);
-        }
+        drawCloseIcon(right, rowTop);
     }
 
     protected final boolean isOverClose(float mouseX, float mouseY, float rowTop, float right) {
-        float closeX = right - 6.0F - 3.0F;
-        float closeY = rowTop + 3.0F;
-        return mouseX >= closeX && mouseX <= closeX + 6.0F && mouseY >= closeY && mouseY <= closeY + 6.0F;
+        return isOverCloseIcon(mouseX, mouseY, right, rowTop);
     }
 
     protected final void renderItemInRow(ItemStack stack, float x, float rowTop) {
-        if (stack != null) {
-            ItemRenderer renderItem = Minecraft.getInstance().getItemRenderer();
-            double scale = 0.55;
-            float itemHeight = (float) (16.0 * scale);
-            float pad = (11.0F - itemHeight) / 2.0F;
-            float itemY = rowTop + pad;
-            float px = (float) (x / scale);
-            float py = (float) (itemY / scale);
-            GlStateManager.pushMatrix();
-            GlStateManager.scaled(scale, scale, scale);
-            GlStateManager.translatef(px, py, 0.0F);
-            Lighting.turnOnGui();
-            GlStateManager.disableBlend();
-            renderItem.renderGuiItem(stack, 0, 0);
-            GlStateManager.enableBlend();
-            Lighting.turnOff();
-            GlStateManager.popMatrix();
-        }
+        ClassicIcons.drawItem(stack, x, rowTop + 0.5F, 0.625F);
     }
 
     protected final boolean isMouseOverDropdown(float mouseX, float mouseY) {

@@ -2,12 +2,18 @@ package keystrokesmod.clickgui.components.impl;
 
 import java.awt.Color;
 import keystrokesmod.Feral;
+import keystrokesmod.clickgui.ClickGui;
+import keystrokesmod.clickgui.ColorPickerState;
+import keystrokesmod.clickgui.GuiText;
+import keystrokesmod.clickgui.PickerGradient;
 import keystrokesmod.clickgui.components.Component;
 import keystrokesmod.module.impl.client.Gui;
 import keystrokesmod.module.setting.impl.ColorSetting;
 import keystrokesmod.utility.RenderUtils;
 import keystrokesmod.utility.Timer;
 import keystrokesmod.utility.font.FeralFontRenderer;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.render.Window;
 import org.lwjgl.opengl.GL11;
 
 public class ColorComponent extends Component {
@@ -19,26 +25,11 @@ public class ColorComponent extends Component {
     public float xOffset;
     public boolean expanded;
     private int dragMode;
-    private float cachedHue;
-    private float cachedSat;
-    private float cachedBri;
+    private final ColorPickerState picker = new ColorPickerState();
     private Timer smoothTimer;
     private float animationProgress;
     private float animationStartProgress;
     private float animationTargetProgress;
-    private static final float ANIMATION_DURATION = 250.0F;
-    private static final float LABEL_HEIGHT = 12.0F;
-    private static final float SQUARE_SIZE = 50.0F;
-    private static final float HUE_BAR_WIDTH = 10.0F;
-    private static final float HUE_GAP = 4.0F;
-    private static final float BLACK_BRI_EPSILON = 0.001F;
-    private static final float GREY_SAT_EPSILON = 0.001F;
-    private static final float ALPHA_BAR_WIDTH = 10.0F;
-    private static final float ALPHA_GAP = 4.0F;
-    private static final float SQUARE_TOP_PAD = 2.0F;
-    private static final float BOTTOM_PAD = 2.0F;
-    private static final int HUE_STEPS = 20;
-    private static final float PREVIEW_BOX_SIZE = 5.0F;
 
     public ColorComponent(ColorSetting colorSetting, ModuleComponent moduleComponent, float o) {
         this.colorSetting = colorSetting;
@@ -98,11 +89,11 @@ public class ColorComponent extends Component {
         FeralFontRenderer renderer = Gui.getClickGuiSettingFontRenderer();
         GL11.glPushMatrix();
         GL11.glScaled(0.5, 0.5, 0.5);
-        float textOffset = renderer.getStringWidth("[+]  ");
+        float textOffset = 17f;
         renderer.drawString(
-                this.colorSetting.getName(),
+                GuiText.fit(renderer, this.colorSetting.getName(), (cw - 16f) * 2f - this.xOffset - textOffset),
                 (cx + 4.0F) * 2.0F + this.xOffset + textOffset,
-                (cy + this.o + 4.0F) * 2.0F,
+                (cy + this.o + 6f) * 2f - renderer.getFontHeight() / 2f,
                 -1,
                 true);
         GL11.glPopMatrix();
@@ -122,69 +113,50 @@ public class ColorComponent extends Component {
         float sqTop = cy + this.o + 12.0F + 2.0F;
         float sqRight = areaLeft + 50.0F;
         float sqBottom = sqTop + 50.0F;
-        float bri = this.dragMode != 0 ? this.cachedBri : this.colorSetting.getBrightness();
-        float satFromSetting = this.dragMode != 0 ? this.cachedSat : this.colorSetting.getSaturation();
-        boolean isBlack = bri < 0.001F;
-        boolean isGrey = satFromSetting < 0.001F;
-        if (this.dragMode == 0 && !isBlack) {
-            this.cachedBri = bri;
-            this.cachedSat = this.colorSetting.getSaturation();
-            if (!isGrey) {
-                this.cachedHue = this.colorSetting.getHue();
+        picker.sync(colorSetting);
+        float hue = picker.hue() / 360f;
+        float pixels = (float) (ClickGui.getActiveRenderScale() * new Window(Minecraft.getInstance()).getScale());
+        int hueRGB = Color.HSBtoRGB(hue, 1.0F, 1.0F) | 0xFF000000;
+        if (!PickerGradient.draw(
+                PickerGradient.SATURATION_VALUE, areaLeft, sqTop, 50f, 50f, 2f, pixels, 1f, hueRGB, 1f)) {
+            RenderUtils.drawHorizontalGradientRect(areaLeft, sqTop, sqRight, sqBottom, -1, hueRGB);
+            RenderUtils.drawVerticalGradientRect(areaLeft, sqTop, sqRight, sqBottom, 0, -16777216);
+        }
+        float indX = areaLeft + 2f + picker.saturation() * 46f;
+        float indY = sqTop + 2f + (1f - picker.brightness()) * 46f;
+        RenderUtils.drawRoundedRectangle(indX - 2f, indY - 2f, indX + 2f, indY + 2f, 2f, -1);
+        RenderUtils.drawRoundedRectangle(indX - 1f, indY - 1f, indX + 1f, indY + 1f, 1f, 0xFF222222);
+        float hueLeft = sqRight + 4.0F;
+        float hueRight = hueLeft + 10.0F;
+        if (!PickerGradient.draw(PickerGradient.HUE, hueLeft, sqTop, 10f, 50f, 2f, pixels, 1f, 0, 1f)) {
+            for (int i = 0; i < 6; i++) {
+                RenderUtils.drawVerticalGradientRect(
+                        hueLeft,
+                        sqTop + i * 50f / 6f,
+                        hueRight,
+                        sqTop + (i + 1) * 50f / 6f,
+                        Color.HSBtoRGB(i / 6f, 1f, 1f),
+                        Color.HSBtoRGB((i + 1) / 6f, 1f, 1f));
             }
         }
 
-        boolean useCachedHue = this.dragMode != 0 || isBlack || isGrey;
-        float hue = useCachedHue ? this.cachedHue / 360.0F : this.colorSetting.getHue() / 360.0F;
-        float sat = this.dragMode == 0 && !isBlack ? satFromSetting : this.cachedSat;
-        int hueRGB = Color.HSBtoRGB(hue, 1.0F, 1.0F) | 0xFF000000;
-        RenderUtils.drawRect(areaLeft, sqTop, sqRight, sqBottom, hueRGB);
-        RenderUtils.drawHorizontalGradientRect(areaLeft, sqTop, sqRight, sqBottom, -1, 16777215);
-        RenderUtils.drawVerticalGradientRect(areaLeft, sqTop, sqRight, sqBottom, 0, -16777216);
-        RenderUtils.drawOutline(areaLeft - 1.0F, sqTop - 1.0F, sqRight + 1.0F, sqBottom + 1.0F, 1.0F, -12829626);
-        float indX = areaLeft + sat * 50.0F;
-        float indY = sqTop + (1.0F - bri) * 50.0F;
-        RenderUtils.drawRect(indX - 2.0F, indY, indX + 3.0F, indY + 1.0F, -1);
-        RenderUtils.drawRect(indX, indY - 2.0F, indX + 1.0F, indY + 3.0F, -1);
-        float hueLeft = sqRight + 4.0F;
-        float hueRight = hueLeft + 10.0F;
-        float stepH = 2.5F;
-
-        for (int i = 0; i < 20; i++) {
-            float h1 = i / 20.0F;
-            float h2 = (i + 1) / 20.0F;
-            int c1 = Color.HSBtoRGB(h1, 1.0F, 1.0F) | 0xFF000000;
-            int c2 = Color.HSBtoRGB(h2, 1.0F, 1.0F) | 0xFF000000;
-            RenderUtils.drawVerticalGradientRect(hueLeft, sqTop + i * stepH, hueRight, sqTop + (i + 1) * stepH, c1, c2);
-        }
-
-        RenderUtils.drawOutline(hueLeft - 1.0F, sqTop - 1.0F, hueRight + 1.0F, sqBottom + 1.0F, 1.0F, -12829626);
-        float hueIndY = sqTop + Math.max(0.0F, Math.min(1.0F, hue)) * 50.0F;
-        RenderUtils.drawRect(hueLeft - 1.0F, hueIndY - 1.0F, hueRight + 1.0F, hueIndY + 2.0F, -1);
+        drawMarker(hueLeft, hueRight, sqTop, hue);
         if (this.colorSetting.hasAlpha()) {
             float alphaLeft = hueRight + 4.0F;
             float alphaRight = alphaLeft + 10.0F;
-            int checkSize = 4;
-
-            for (float ax = alphaLeft; ax < alphaRight; ax += checkSize) {
-                for (float ay = sqTop; ay < sqBottom; ay += checkSize) {
-                    int col = ((int) ((ax - alphaLeft) / checkSize) + (int) ((ay - sqTop) / checkSize)) % 2 == 0
-                            ? -10066330
-                            : -6710887;
-                    RenderUtils.drawRect(
-                            ax, ay, Math.min(ax + checkSize, alphaRight), Math.min(ay + checkSize, sqBottom), col);
-                }
+            if (!PickerGradient.draw(
+                    PickerGradient.ALPHA, alphaLeft, sqTop, 10f, 50f, 2f, pixels, 4f, colorSetting.getColor(), 1f)) {
+                RenderUtils.drawVerticalGradientRect(
+                        alphaLeft, sqTop, alphaRight, sqBottom, 0xFF666666, 0xFF000000 | colorSetting.getRGB());
             }
-
-            int rgb = this.colorSetting.getRGB();
-            RenderUtils.drawVerticalGradientRect(
-                    alphaLeft, sqTop, alphaRight, sqBottom, rgb & 16777215, rgb | 0xFF000000);
-            RenderUtils.drawOutline(
-                    alphaLeft - 1.0F, sqTop - 1.0F, alphaRight + 1.0F, sqBottom + 1.0F, 1.0F, -12829626);
-            float alphaFrac = this.colorSetting.getAlpha() / 255.0F;
-            float alphaIndY = sqTop + alphaFrac * 50.0F;
-            RenderUtils.drawRect(alphaLeft - 1.0F, alphaIndY - 1.0F, alphaRight + 1.0F, alphaIndY + 2.0F, -1);
+            drawMarker(alphaLeft, alphaRight, sqTop, colorSetting.getAlpha() / 255f);
         }
+    }
+
+    private static void drawMarker(float left, float right, float top, float value) {
+        float y = top + Math.max(1f, Math.min(49f, value * 50f));
+        RenderUtils.drawRect(left, y - 1f, right, y + 1f, 0xFF222222);
+        RenderUtils.drawRect(left + 1f, y - 0.5f, right - 1f, y + 0.5f, -1);
     }
 
     @Override
@@ -194,22 +166,19 @@ public class ColorComponent extends Component {
         if (this.dragMode != 0 && !(this.getAnimationProgress() < 1.0F)) {
             float areaLeft = this.x + 4.0F + this.xOffset / 2.0F;
             float sqTop = this.y + 12.0F + 2.0F;
-            float sqRight = areaLeft + 50.0F;
-            float sqBottom = sqTop + 50.0F;
-            float hueLeft = sqRight + 4.0F;
-            float hueRight = hueLeft + 10.0F;
+            int before = colorSetting.getColor();
             if (this.dragMode == 1) {
-                this.cachedSat = Math.max(0.0F, Math.min(1.0F, (mouseX - areaLeft) / 50.0F));
-                this.cachedBri = Math.max(0.0F, Math.min(1.0F, 1.0F - (mouseY - sqTop) / 50.0F));
-                this.colorSetting.setFromHSB(this.cachedHue, this.cachedSat, this.cachedBri);
-                this.markUnsaved();
+                picker.setSaturationValue(
+                        colorSetting,
+                        Math.max(0f, Math.min(1f, (mouseX - areaLeft) / 50f)),
+                        Math.max(0f, Math.min(1f, 1f - (mouseY - sqTop) / 50f)));
             } else if (this.dragMode == 2) {
-                this.cachedHue = Math.max(0.0F, Math.min(360.0F, (mouseY - sqTop) / 50.0F * 360.0F));
-                this.colorSetting.setFromHSB(this.cachedHue, this.cachedSat, this.cachedBri);
-                this.markUnsaved();
+                picker.setHue(colorSetting, Math.max(0f, Math.min(360f, (mouseY - sqTop) / 50f * 360f)));
             } else if (this.dragMode == 3 && this.colorSetting.hasAlpha()) {
                 float a = Math.max(0.0F, Math.min(1.0F, (mouseY - sqTop) / 50.0F));
                 this.colorSetting.setAlpha((int) (a * 255.0F));
+            }
+            if (before != colorSetting.getColor()) {
                 this.markUnsaved();
             }
         }
@@ -239,14 +208,16 @@ public class ColorComponent extends Component {
                 float hueLeft = sqRight + 4.0F;
                 float hueRight = hueLeft + 10.0F;
                 if (mouseX >= areaLeft && mouseX <= sqRight && mouseY >= sqTop && mouseY <= sqBottom) {
-                    this.cacheHSB();
+                    picker.sync(colorSetting);
                     this.dragMode = 1;
+                    drawScreen(mouseX, mouseY);
                     return false;
                 }
 
                 if (mouseX >= hueLeft - 2.0F && mouseX <= hueRight + 2.0F && mouseY >= sqTop && mouseY <= sqBottom) {
-                    this.cacheHSB();
+                    picker.sync(colorSetting);
                     this.dragMode = 2;
+                    drawScreen(mouseX, mouseY);
                     return false;
                 }
 
@@ -257,8 +228,9 @@ public class ColorComponent extends Component {
                             && mouseX <= alphaRight + 2.0F
                             && mouseY >= sqTop
                             && mouseY <= sqBottom) {
-                        this.cacheHSB();
+                        picker.sync(colorSetting);
                         this.dragMode = 3;
+                        drawScreen(mouseX, mouseY);
                         return false;
                     }
                 }
@@ -280,7 +252,9 @@ public class ColorComponent extends Component {
 
     @Override
     public void mouseReleased(int mouseX, int mouseY, int button) {
-        this.dragMode = 0;
+        if (button == 0) {
+            this.dragMode = 0;
+        }
     }
 
     @Override
@@ -313,18 +287,6 @@ public class ColorComponent extends Component {
         this.animationProgress = expanded ? 1.0F : 0.0F;
         this.animationStartProgress = this.animationProgress;
         this.animationTargetProgress = this.animationProgress;
-    }
-
-    private void cacheHSB() {
-        float bri = this.colorSetting.getBrightness();
-        float sat = this.colorSetting.getSaturation();
-        this.cachedBri = bri;
-        if (bri >= 0.001F) {
-            this.cachedSat = sat;
-            if (sat >= 0.001F) {
-                this.cachedHue = this.colorSetting.getHue();
-            }
-        }
     }
 
     private void markUnsaved() {

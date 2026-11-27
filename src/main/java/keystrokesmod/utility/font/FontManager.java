@@ -34,7 +34,7 @@ public final class FontManager {
     private static final float MAX_THICKNESS = 1.0F;
     private static final float DEFAULT_HUD_FONT_SIZE = 10.0F;
     private static final float DEFAULT_CLICK_GUI_HEADER_HEIGHT = 9.0F;
-    private static final float DEFAULT_CLICK_GUI_SETTING_HEIGHT = 9.0F;
+    private static final float DEFAULT_CLICK_GUI_SETTING_HEIGHT = 13.0F;
     private static final float DEFAULT_NAMETAG_FONT_SIZE = 9.0F;
     private static final FontManager.FontDefinition[] BUNDLED_FONTS = new FontManager.FontDefinition[] {
         FontManager.FontDefinition.bundled("Crafty Girls", "CraftyGirls-Regular.ttf"),
@@ -166,7 +166,9 @@ public final class FontManager {
     }
 
     public static FeralFontRenderer getClickGuiSettingRenderer(String family, float sizeMultiplier, float thickness) {
-        return getRendererForPixelHeight(family, 9.0F * clampSizeMultiplier(sizeMultiplier), thickness);
+        // Classic setting rows apply a half-scale matrix; cap the result for the 12 px rows.
+        float height = DEFAULT_CLICK_GUI_SETTING_HEIGHT * clampSizeMultiplier(sizeMultiplier);
+        return getRendererForPixelHeight(family, Math.max(10.0F, Math.min(15.0F, height)), thickness);
     }
 
     private static float clampSizeMultiplier(float sizeMultiplier) {

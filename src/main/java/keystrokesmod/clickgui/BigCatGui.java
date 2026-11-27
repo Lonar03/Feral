@@ -2,17 +2,33 @@ package keystrokesmod.clickgui;
 
 import java.awt.Color;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.WeakHashMap;
+import keystrokesmod.Feral;
+import keystrokesmod.clickgui.components.impl.CategoryComponent;
+import keystrokesmod.clickgui.components.impl.ModuleComponent;
 import keystrokesmod.module.Module;
 import keystrokesmod.module.ModuleManager;
 import keystrokesmod.module.impl.client.Gui;
 import keystrokesmod.module.impl.render.HUD;
+import keystrokesmod.module.setting.Setting;
+import keystrokesmod.module.setting.impl.ColorSetting;
+import keystrokesmod.module.setting.impl.SliderSetting;
 import keystrokesmod.script.ScriptDefaults;
-import keystrokesmod.script.model.ItemStack;
+import keystrokesmod.utility.BlockSearchIndex;
+import keystrokesmod.utility.CatRenderer;
+import keystrokesmod.utility.ItemSearchIndex;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.render.Window;
+import net.minecraft.item.ItemStack;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
 
@@ -33,6 +49,7 @@ public final class BigCatGui extends ScriptDefaults {
     private static final String scriptName = "Gui";
 
     private static final ScriptDefaults.modules modules = new ScriptDefaults.modules(scriptName);
+    private static final String[] LOGO_LETTERS = {"F", "e", "r", "a", "l"};
 
     private BigCatGui() {}
 
@@ -48,7 +65,10 @@ public final class BigCatGui extends ScriptDefaults {
     /** True while the Gui module's bind (a key, or a mouse button stored as 1000 + button) is held. */
     private static boolean openKeyDown() {
         Module gui = ModuleManager.getModule(Gui.class);
-        int code = gui == null ? Keyboard.KEY_RSHIFT : gui.getKeycode();
+        int code = gui == null ? Gui.DEFAULT_KEY : gui.getKeycode();
+        if (code == 1069 || code == 1070) {
+            return false; // A wheel bind is an event, not a held button.
+        }
         if (code >= 1000) {
             return Mouse.isButtonDown(code - 1000);
         }
@@ -56,18 +76,7 @@ public final class BigCatGui extends ScriptDefaults {
         return code > 0 && Keyboard.isKeyDown(code);
     }
 
-    private static final String S_SCALE = "Scale";
-    private static final String S_FONT = "Font";
-    private static final String S_FONT_SIZE = "Font size";
-    private static final String S_FONT_THICK = "Font thickness";
-    private static final String S_WIDTH = "Width";
-    private static final String S_HEIGHT = "Height";
     private static final String S_ALPHA = "Opacity";
-    private static final String S_NOTIFS = "Show notifications";
-    private static final String S_NOTIF_STYLE = "Notification style";
-    private static final String S_NOTIF_POS = "Notification corner";
-    private static final String S_NOTIF_SCALE = "Notification scale";
-    private static final String S_NOTIF_OPACITY = "Notification opacity";
 
     private static final int NOTIF_MAX = 6;
     private static final long NOTIF_LIFE = 1200L;
@@ -85,7 +94,7 @@ public final class BigCatGui extends ScriptDefaults {
     /* Layout, in scaled units (multiply by s). */
     private static final float SIDEBAR_W = 116f;
     private static final float CARD_HEAD_H = 31f;
-    private static final float RESIZE_HANDLE = 14f;
+    private static final float RESIZE_HANDLE = 22f;
     private static final float SCROLLBAR_W = 3f;
 
     /* Expanded colour picker: sat/bri square plus hue and alpha bars. */
@@ -96,8 +105,6 @@ public final class BigCatGui extends ScriptDefaults {
     private static final float PICKER_PAD_BOTTOM = 5f;
     private static final float PICKER_R = 3f;
     private static final float PICKER_CHECK = 4f;
-    private static final int PICKER_ARC_STEPS = 4;
-    private static final int PICKER_HUE_STEPS = 32;
 
     /* List settings. */
     private static final float LIST_ROW_H = 16f;
@@ -112,26 +119,27 @@ public final class BigCatGui extends ScriptDefaults {
     private boolean inMenu = false;
 
     /* ---------------------------------------------------------- selection state */
-    private int tab = 0;
-    private final ArrayList orderedCache = new ArrayList();
-    private long orderedFrame = -1;
-    private int lastSelTab = 0;
+    private Module.category tab = Module.category.combat;
+    private Module.category lastSelTab = tab;
     private float selAnim = 1f;
     private float sideScroll = 0f;
-    private final float[] scroll = new float[32];
+    private final EnumMap<Module.category, Float> categoryScroll = new EnumMap<>(Module.category.class);
+    private float searchScroll;
     private String searchText = "";
     private boolean searchFocused = false;
 
     private final HashSet expandedCards = new HashSet();
     private final HashSet expandedModes = new HashSet();
-    private final HashSet expandedColors = new HashSet();
+    private final Map<ColorSetting, ColorPickerState> pickers = new WeakHashMap<>();
+    private final Map<Object, Integer> uiIds = new WeakHashMap<>();
+    private final Map<Module, List<Setting>> frameSettings = new IdentityHashMap<>();
+    private int nextUiId;
 
     /* Keyed animations, each advanced at most once per frame. */
     private final KeyedAnim cardAnim = new KeyedAnim();
     private final KeyedAnim toggleAnim = new KeyedAnim();
     private final KeyedAnim groupAnim = new KeyedAnim();
     private final KeyedAnim modeAnim = new KeyedAnim();
-    private final KeyedAnim colorAnim = new KeyedAnim();
     private final KeyedAnim listAnim = new KeyedAnim();
     private final HashMap arrayAnim = new HashMap();
     private float arrayListAnim = 0f;
@@ -153,8 +161,7 @@ public final class BigCatGui extends ScriptDefaults {
     private float listDropScroll = 0f;
     private boolean listOpen = false;
     private final HashMap listSelScroll = new HashMap();
-    private ArrayList wheelBlocks = new ArrayList();
-    private ArrayList wheelBlocksPrev = new ArrayList();
+    private boolean sawListFocus;
 
     /* --------------------------------------------------------- notifications */
     private final String[] notifText = new String[NOTIF_MAX];
@@ -183,15 +190,17 @@ public final class BigCatGui extends ScriptDefaults {
     private boolean winDragging = false;
     private float resizeGrabX = 0f;
     private float resizeGrabY = 0f;
+    private float resizeAnchorX;
+    private float resizeAnchorY;
+    private float resizeLastX;
+    private float resizeLastY;
     private boolean resizing = false;
 
-    /* Scrollable content area. contentTop/Bottom also bound hover/click tests while clipped. */
+    /* Scrollable content area. */
     private float listX = 0f;
     private float listY = 0f;
     private float listW = 0f;
     private float listH = 0f;
-    private float contentTop = 0f;
-    private float contentBottom = 0f;
     private boolean clipping = false;
     private final ScrollDrag sideDrag = new ScrollDrag();
     private final ScrollDrag contentDrag = new ScrollDrag();
@@ -206,31 +215,69 @@ public final class BigCatGui extends ScriptDefaults {
     private keystrokesmod.module.Module bindModule = null;
     private keystrokesmod.module.setting.impl.KeySetting bindKey = null;
     private keystrokesmod.module.setting.impl.TextSetting editing = null;
+    private Module editingModule;
     private String editBuffer = "";
+    private boolean sawEdit;
     private keystrokesmod.module.setting.impl.SliderSetting dragSlider = null;
     private keystrokesmod.module.setting.impl.ColorSetting dragColorSetting = null;
     private int dragColorPart = -1;
-    private float cachedHue = 0f;
-    private float cachedSat = 0f;
-    private float cachedBri = 0f;
+    private boolean sawColorDrag;
 
     /* ----------------------------------------------------- input for this frame */
-    private boolean prevLeft = false;
-    private boolean prevRight = false;
     private boolean leftDown = false;
     private boolean pressLeft = false;
     private boolean pressRight = false;
     private boolean releaseLeft = false;
+    private float releaseX;
+    private float releaseY;
     private boolean prevOpenKey = false;
     private int frameWheel = 0;
+    private final PointerInput pointer = new PointerInput();
+    private final ArrayList<KeyInput> queuedKeys = new ArrayList<>();
     private float mx = 0f;
     private float my = 0f;
-    private int scaledW = 1;
-    private int scaledH = 1;
+    private float scaledW = 1f;
+    private float scaledH = 1f;
     private int scale = 1;
+    private int framebufferHeight;
 
     /* ---------------------------------------------------- ClickGui juggling */
     private boolean pendingOpen = false;
+    private long logoOpenedAt;
+    private final Screen screen = new Screen() {
+        @Override
+        public void handleMouse() {
+            if (closing) {
+                return;
+            }
+            int button = Mouse.getEventButton();
+            boolean down = Mouse.getEventButtonState();
+            int wheel = Mouse.getEventDWheel();
+            if (down && button >= 2 && button <= 4 && (bindModule != null || bindKey != null)) {
+                applyBind(1000 + button);
+            } else if (wheel != 0 && (bindModule != null || bindKey != null)) {
+                applyBind(wheel > 0 ? 1069 : 1070);
+                return;
+            } else if (wheel != 0 && !searchFocused && editing == null && !listOpen) {
+                Module gui = ModuleManager.getModule(Gui.class);
+                if (gui != null
+                        && gui.getKeycode() == (wheel > 0 ? 1069 : 1070)
+                        && client.time() - lastToggleTime > 150L) {
+                    lastToggleTime = client.time();
+                    startClose();
+                    return;
+                }
+            }
+            pointer.accept(button, down, Mouse.getEventX(), Mouse.getEventY(), wheel);
+        }
+
+        @Override
+        public void keyPressed(char typedChar, int keyCode) {
+            if (!closing && !Keyboard.isRepeatEvent()) {
+                queuedKeys.add(new KeyInput(typedChar, keyCode));
+            }
+        }
+    };
 
     /* ------------------------------------------ theme, resolved once per frame */
     private float s = 1f;
@@ -251,6 +298,8 @@ public final class BigCatGui extends ScriptDefaults {
     private String fontFamily = "Crafty Girls";
     private float fontSizeMul = 1f;
     private float fontThickness = 0f;
+    private float menuFontScale = 1f;
+    private float settledControlScale;
     private keystrokesmod.utility.font.FeralFontRenderer fBig = null;
     private keystrokesmod.utility.font.FeralFontRenderer fMid = null;
     private keystrokesmod.utility.font.FeralFontRenderer fSmall = null;
@@ -267,46 +316,31 @@ public final class BigCatGui extends ScriptDefaults {
         }
     }
 
-    public boolean onMouse(int button, boolean state, int x, int y) {
-        return !open;
-    }
-
-    public boolean onKeyPress(char typedChar, int keyCode) {
-        if (!open || !keybinds.isKeyDown(keyCode)) {
-            return true;
+    private void onKeyPress(char typedChar, int keyCode) {
+        if (!open) {
+            return;
         }
         if (editing != null) {
             handleEditKey(typedChar, keyCode);
-            return false;
-        }
-        if (bindModule != null || bindKey != null) {
+        } else if (bindModule != null || bindKey != null) {
             applyBind(keyCode == 1 ? 0 : keyCode);
-            return false;
-        }
-        if (listOpen) {
+        } else if (listOpen) {
             handleListKey(typedChar, keyCode);
-            return false;
-        }
-        if (searchFocused) {
+        } else if (searchFocused) {
             handleSearchKey(typedChar, keyCode);
-            return false;
-        }
-        if (keyCode == 1) {
+        } else if (keyCode == 1) {
             startClose();
-            return false;
         }
-        return true;
     }
 
     private void handleEditKey(char typedChar, int keyCode) {
         if (keyCode == 1) {
             editing = null;
+            editingModule = null;
             editBuffer = "";
         } else if (keyCode == 28 || keyCode == 156) {
             final keystrokesmod.module.setting.impl.TextSetting target = editing;
-            editing.setText(editBuffer);
-            editing = null;
-            editBuffer = "";
+            commitEdit();
             runSafely(new Runnable() {
                 public void run() {
                     target.submit();
@@ -348,10 +382,10 @@ public final class BigCatGui extends ScriptDefaults {
             if (searchText.length() > 0) {
                 searchText = searchText.substring(0, searchText.length() - 1);
             }
-            scroll[31] = 0f;
+            searchScroll = 0f;
         } else if (typedChar >= ' ' && typedChar != (char) 127 && searchText.length() < 32) {
             searchText = searchText + typedChar;
-            scroll[31] = 0f;
+            searchScroll = 0f;
         }
     }
 
@@ -361,40 +395,30 @@ public final class BigCatGui extends ScriptDefaults {
         } else if (bindModule != null) {
             bindModule.setBind(code);
         }
+        markUnsaved(bindModule);
         bindKey = null;
         bindModule = null;
         // Adopt the just-bound key's current state so the press that bound it cannot also fire the menu.
         prevOpenKey = openKeyDown();
     }
 
-    private void captureMouseBind() {
-        if (bindModule == null && bindKey == null) {
-            return;
-        }
-        for (int b = 2; b <= 4; b++) {
-            if (keybinds.isMouseDown(b)) {
-                applyBind(1000 + b);
-                return;
-            }
-        }
-    }
+    public void onRenderTick(boolean notifications) {
+        Minecraft mc = Minecraft.getInstance();
+        Window viewport = new Window(mc);
+        scaledW = (float) viewport.getScaledWidth();
+        scaledH = (float) viewport.getScaledHeight();
+        scale = viewport.getScale();
+        framebufferHeight = mc.height;
 
-    public void onRenderTick(float partialTicks) {
-        int[] display = client.getDisplaySize();
-        scaledW = display[0];
-        scaledH = display[1];
-        scale = display[2];
-
-        String screenName = client.getScreen();
         boolean keyNow = openKeyDown();
         // The Gui module opens the menu (see requestOpen); its key closes it again while it is open.
         // While a row is capturing a keybind, the open key must not toggle the menu, or the very
         // key you press to rebind it would immediately close the menu you are editing in.
-        boolean binding = bindModule != null || bindKey != null;
+        boolean binding = bindModule != null || bindKey != null || editing != null || listOpen || searchFocused;
         if (open
                 && keyNow
                 && !prevOpenKey
-                && screenName.equals("EmptyGuiScreen")
+                && mc.screen == screen
                 && !binding
                 && client.time() - lastToggleTime > 150L) {
             lastToggleTime = client.time();
@@ -408,7 +432,7 @@ public final class BigCatGui extends ScriptDefaults {
 
         if (pendingOpen) {
             pendingOpen = false;
-            if (!open && (screenName.equals("") || screenName.equals("ClickGui"))) {
+            if (!open && (mc.screen == null || mc.screen instanceof ClickGui)) {
                 lastToggleTime = client.time();
                 openMenu();
                 prevOpenKey = openKeyDown();
@@ -429,20 +453,19 @@ public final class BigCatGui extends ScriptDefaults {
         frameId++;
         beginFrame();
 
-        s = (float) modules.getSlider(scriptName, S_SCALE);
-        if (s <= 0.1f) {
-            s = 1f;
-        }
-
         // Theme colours must be read every frame, not just while the menu is open, or the arraylist and
         // notifications use the hardcoded defaults until the menu is opened once after launch.
         applySettings();
-        detectToggles();
-        if (Gui.isBigCatStyle() && modules.getButton(scriptName, S_NOTIFS) && !open) {
-            drawNotifications();
+        if (notifications) {
+            detectToggles();
+            if (!open && !(mc.screen instanceof ClickGui)) {
+                drawNotifications();
+            }
         }
         // The arraylist belongs to the HUD module (Arraylist: Big cat), whatever the Gui style is.
-        arrayListAnim = approach(arrayListAnim, HUD.isCatArraylistSelected() ? 1f : 0f, 3f, frameDt);
+        arrayListAnim = HUD.isArraylistEnabled()
+                ? approach(arrayListAnim, HUD.isCatArraylistSelected() ? 1f : 0f, 3f, frameDt)
+                : 0f;
         if (arrayListAnim > 0.005f) {
             drawArraylist();
         }
@@ -450,7 +473,7 @@ public final class BigCatGui extends ScriptDefaults {
         if (!open) {
             return;
         }
-        if (!client.getScreen().equals("EmptyGuiScreen")) {
+        if (mc.screen != screen) {
             open = false;
             resetInteraction();
             return;
@@ -479,6 +502,12 @@ public final class BigCatGui extends ScriptDefaults {
             gl.depth(true);
             gl.pop();
         }
+        // Resolve a queued click (including its focus change) before delivering typed keys.
+        for (int i = 0; i < queuedKeys.size() && !closing; i++) {
+            KeyInput key = queuedKeys.get(i);
+            onKeyPress(key.character, key.code);
+        }
+        queuedKeys.clear();
         if (closing && menuAnim < 0.02f) {
             closeMenu();
         }
@@ -489,11 +518,18 @@ public final class BigCatGui extends ScriptDefaults {
         toggleAnim.begin(frameId, frameDt);
         groupAnim.begin(frameId, frameDt);
         modeAnim.begin(frameId, frameDt);
-        colorAnim.begin(frameId, frameDt);
         listAnim.begin(frameId, frameDt);
     }
 
     /* ================================================================ notifications */
+
+    void resetNotifications() {
+        if (enabledInit) {
+            enabledInit = false;
+            notifCount = 0;
+            prevEnabled.clear();
+        }
+    }
 
     private void detectToggles() {
         ArrayList all = allModules();
@@ -509,7 +545,7 @@ public final class BigCatGui extends ScriptDefaults {
             // the two fight over one entry, firing a notification every frame.
             Object prev = prevEnabled.get(m);
             boolean was = prev != null && ((Boolean) prev).booleanValue();
-            if (enabledInit && prev != null && now != was && modules.getButton(scriptName, S_NOTIFS)) {
+            if (enabledInit && prev != null && now != was && !HUD.isNotificationBlacklisted(name)) {
                 pushNotif(name, now);
             }
             prevEnabled.put(m, Boolean.valueOf(now));
@@ -802,13 +838,13 @@ public final class BigCatGui extends ScriptDefaults {
             return;
         }
 
-        boolean modern = modules.getSlider(scriptName, S_NOTIF_STYLE) >= 0.5;
-        int corner = (int) Math.round(modules.getSlider(scriptName, S_NOTIF_POS));
+        boolean modern = HUD.notificationStyle.getInput() >= 0.5;
+        int corner = (int) HUD.notificationCorner.getInput();
         boolean right = corner == 1 || corner == 3;
         boolean bottom = corner == 2 || corner == 3;
 
-        float ns = (float) modules.getSlider(scriptName, S_NOTIF_SCALE) * 0.8f;
-        float nop = clampF((float) modules.getSlider(scriptName, S_NOTIF_OPACITY) / 100f * 0.9f, 0f, 0.9f);
+        float ns = (float) HUD.notificationScale.getInput() * 0.8f;
+        float nop = clampF((float) HUD.notificationOpacity.getInput() / 100f * 0.9f, 0f, 0.9f);
         float cardH = (modern ? 34f : 20f) * ns;
         float cardW = 170f * ns;
         float pad = 9f * ns;
@@ -865,10 +901,12 @@ public final class BigCatGui extends ScriptDefaults {
             float iy = y + h / 2f - iconD / 2f;
             qRound(ix, iy, ix + iconD, iy + iconD, iconD / 2f, withAlpha(status, 60));
             qRound(ix + iconD * 0.35f, iy + iconD * 0.35f, ix + iconD * 0.65f, iy + iconD * 0.65f, iconD * 0.15f, st);
-            txt(fr, notifText[i], ix + iconD + 6f * ns, y + h * 0.36f, C_WHITE);
-            txt(fr, notifOn[i] ? "Enabled" : "Disabled", ix + iconD + 6f * ns, y + h * 0.7f, st);
+            float textX = ix + iconD + 6f * ns;
+            float textW = x + w - pad - textX;
+            txt(fr, trim(fr, notifText[i], textW), textX, y + h * 0.3f, C_WHITE);
+            txt(fr, trim(fr, notifOn[i] ? "Enabled" : "Disabled", textW), textX, y + h * 0.73f, st);
         } else {
-            txt(fr, label, x + pad, y + h / 2f, C_WHITE);
+            txt(fr, trim(fr, label, w - 2f * pad), x + pad, y + h / 2f, C_WHITE);
         }
     }
 
@@ -895,14 +933,13 @@ public final class BigCatGui extends ScriptDefaults {
     /* ============================================================== menu open/close */
 
     private void openMenu() {
+        Feral.clickGui.refreshModulesIfLiteModeChanged();
         open = true;
         closing = false;
         menuAnim = 0f;
+        logoOpenedAt = System.nanoTime();
         resetInteraction();
-        prevLeft = keybinds.isMouseDown(0);
-        prevRight = keybinds.isMouseDown(1);
-        keybinds.getScroll();
-        render.showGui();
+        Minecraft.getInstance().openScreen(screen);
     }
 
     private void startClose() {
@@ -917,9 +954,9 @@ public final class BigCatGui extends ScriptDefaults {
         open = false;
         closing = false;
         resetInteraction();
-        String sc = client.getScreen();
-        if (sc.equals("EmptyGuiScreen") || sc.equals("ClickGui")) {
-            client.closeScreen();
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.screen == screen) {
+            mc.openScreen(null);
         }
     }
 
@@ -927,17 +964,20 @@ public final class BigCatGui extends ScriptDefaults {
         bindModule = null;
         bindKey = null;
         editing = null;
+        editingModule = null;
         editBuffer = "";
         dragSlider = null;
         dragColorSetting = null;
         dragColorPart = -1;
+        sideDrag.dragging = false;
         contentDrag.dragging = false;
         winDragging = false;
         resizing = false;
         searchFocused = false;
         listFinalizeClose();
         listAnim.clear();
-        colorAnim.clear();
+        pointer.clear();
+        queuedKeys.clear();
         clipping = false;
         scissorOff();
     }
@@ -945,84 +985,93 @@ public final class BigCatGui extends ScriptDefaults {
     /* ================================================================= frame input */
 
     private void pollMouse() {
-        int[] pos = keybinds.getMousePosition();
-        mx = (float) pos[0] / (float) scale;
-        my = (float) scaledH - ((float) pos[1] / (float) scale) - 1f;
+        int x = pointer.hasPosition ? pointer.x : Mouse.getX();
+        int y = pointer.hasPosition ? pointer.y : Mouse.getY();
+        mx = (x + 0.5f) / scale;
+        my = (framebufferHeight - y - 0.5f) / scale;
+        leftDown = Mouse.isButtonDown(0);
+        pressLeft = pointer.leftPress;
+        releaseLeft = pointer.leftRelease;
+        if (releaseLeft) {
+            releaseX = (pointer.releaseX + 0.5f) / scale;
+            releaseY = (framebufferHeight - pointer.releaseY - 0.5f) / scale;
+        }
+        pressRight = pointer.rightPress;
+        frameWheel = pointer.wheel;
+        pointer.clear();
+    }
 
-        leftDown = keybinds.isMouseDown(0);
-        boolean rightNow = keybinds.isMouseDown(1);
+    private float dragX() {
+        return releaseLeft ? releaseX : mx;
+    }
 
-        pressLeft = leftDown && !prevLeft;
-        releaseLeft = !leftDown && prevLeft;
-        pressRight = rightNow && !prevRight;
-
-        prevLeft = leftDown;
-        prevRight = rightNow;
+    private float dragY() {
+        return releaseLeft ? releaseY : my;
     }
 
     /* ==================================================================== frame draw */
 
     private void drawMenu() {
+        sawColorDrag = false;
+        sawEdit = false;
+        sawListFocus = false;
         syncSettingVisibility();
-        captureMouseBind();
+        frameSettings.clear();
         animateOpen();
 
+        resolveWindowPosition();
         handleWindowDrag();
         resolveWindowPosition();
         handleResize();
 
-        wheelBlocksPrev = wheelBlocks;
-        wheelBlocks = new ArrayList();
-
-        frameWheel = keybinds.getScroll();
-        keystrokesmod.utility.CatRenderer.setAlpha(fadeMul);
+        float topCat = BigCatLayout.topCatScale(s, winY);
+        float tailY = CatRenderer.windowTailAnchorY(winY, winH);
+        float tail = BigCatLayout.tailScale(s, scaledW - winX - winW, tailY, scaledH - tailY);
+        CatRenderer.setAlpha(fadeMul);
         try {
-            keystrokesmod.utility.CatRenderer.drawWindowCatBehind(
+            CatRenderer.drawWindowCatBehind(
                     winX,
                     winY,
                     winW,
                     winH,
-                    s,
+                    topCat,
+                    tail,
                     accent,
-                    keystrokesmod.utility.CatRenderer.isOverWindowCatHead(mx, my, winX, winY, winW, s));
+                    topCat > 0f && CatRenderer.isOverWindowCatHead(mx, my, winX, winY, winW, topCat));
         } finally {
-            keystrokesmod.utility.CatRenderer.setAlpha(1f);
+            CatRenderer.setAlpha(1f);
         }
         drawWindowFrame();
         drawSidebar();
         drawContent();
         drawResizeGrip();
-        keystrokesmod.utility.CatRenderer.setAlpha(fadeMul);
+        CatRenderer.setAlpha(fadeMul);
         try {
-            keystrokesmod.utility.CatRenderer.drawWindowCatFront(winX, winY, winW, winH, s, accent);
+            CatRenderer.drawWindowCatFront(
+                    winX, winY, winW, winH, topCat, BigCatLayout.backPawScale(s, scaledH - winY - winH), accent);
         } finally {
-            keystrokesmod.utility.CatRenderer.setAlpha(1f);
+            CatRenderer.setAlpha(1f);
         }
 
-        if (pressLeft && listSearchSetting != null) {
-            pressLeft = false;
+        if (!sawListFocus || pressLeft) {
             listBlur();
+        }
+        if (!sawEdit || pressLeft) {
+            commitEdit();
         }
 
         endFrameInput();
     }
 
     /** The selected tab's category: its colour is the window's accent. */
-    private keystrokesmod.module.Module.category selectedCategory() {
-        ArrayList cats = orderedCategories();
-        if (cats.isEmpty()) {
-            return null;
-        }
-        return ((keystrokesmod.clickgui.components.impl.CategoryComponent)
-                        cats.get(Math.max(0, Math.min(tab, cats.size() - 1))))
-                .category;
+    private void applyCategoryAccent() {
+        accent = CatColors.of(tab);
     }
 
     /** Reads the selected category's colours and the Gui's font settings into the per-frame theme fields. */
     private void applySettings() {
         // Meower: per-category cat managers. Feral: category accent from CatColors, background/text from Gui.
-        keystrokesmod.module.Module.category category = selectedCategory();
-        accent = 0xFF000000 | (category == null ? 0x1AA879 : CatColors.of(category) & 0x00FFFFFF);
+        applyCategoryAccent();
         int bgRgb = keystrokesmod.module.impl.client.Gui.bigCatBackgroundColor.getRGB() & 0x00FFFFFF;
         int txtRgb = keystrokesmod.module.impl.client.Gui.bigCatTextColor.getRGB() & 0x00FFFFFF;
 
@@ -1042,36 +1091,41 @@ public final class BigCatGui extends ScriptDefaults {
         cTextDim = 0xFF000000 | scaleRgb(txtRgb, 0.64f);
         cTextFaint = 0xFF000000 | scaleRgb(txtRgb, 0.42f);
 
-        String family = modules.getSliderString(scriptName, S_FONT);
-        if (family != null && family.length() > 0) {
-            fontFamily = family;
-        }
-        fontSizeMul = (float) modules.getSlider(scriptName, S_FONT_SIZE);
-        fontThickness = (float) modules.getSlider(scriptName, S_FONT_THICK);
-        fBig = font(1.25f * s);
-        fMid = font(1.0f * s);
-        fSmall = font(0.9f * s);
+        fontFamily = Gui.getSelectedFontName();
+        fontSizeMul = Gui.getSelectedFontSize();
+        fontThickness = Gui.getSelectedFontThickness();
     }
 
     /** Picks up the configured size, advances the open/close animation, and applies its pop scale. */
     private void animateOpen() {
-        winW = clampF((float) modules.getSlider(scriptName, S_WIDTH), 0f, (float) scaledW - 16f);
-        winH = clampF((float) modules.getSlider(scriptName, S_HEIGHT), 0f, (float) scaledH - 16f);
-
         menuAnim = approach(menuAnim, closing ? 0f : 1f, closing ? 4f : 2f, frameDt);
         fadeMul = 0.1f + 0.9f * clampF(menuAnim, 0f, 1f);
+        settledControlScale = BigCatLayout.controlsScale(
+                preferredControlScale(),
+                BigCatLayout.fit((float) Gui.bigCatWidth.getInput(), scaledW, 1f),
+                BigCatLayout.fit((float) Gui.bigCatHeight.getInput(), scaledH, 1f));
+        fBig = font(1.25f * settledControlScale);
+        fMid = font(settledControlScale);
+        fSmall = font(0.9f * settledControlScale);
+        updateWindowSize(resizing || menuAnim > 0.98f ? 1f : 0.7f + 0.3f * easeOutBack(menuAnim));
+    }
 
-        float pop = 0.7f + 0.3f * easeOutBack(menuAnim);
-        s *= pop;
-        winW = clampF(winW * pop, 0f, (float) scaledW - 8f);
-        winH = clampF(winH * pop, 0f, (float) scaledH - 8f);
-
+    private void updateWindowSize(float pop) {
+        winW = BigCatLayout.fit((float) Gui.bigCatWidth.getInput(), scaledW, pop);
+        winH = BigCatLayout.fit((float) Gui.bigCatHeight.getInput(), scaledH, pop);
+        s = BigCatLayout.controlsScale(preferredControlScale() * pop, winW, winH);
         sideW = SIDEBAR_W * s;
+        // Scale the glyphs and their layout, not the rasterized font size, during the window pop.
+        menuFontScale = settledControlScale > 0f && s > 0f ? s / settledControlScale : 1f;
+    }
+
+    private static float preferredControlScale() {
+        return 0.7f * Gui.getClickGuiScale();
     }
 
     /** Drags the window by its sidebar header. */
     private void handleWindowDrag() {
-        if (pressLeft && inside(winX, winY, sideW, 44f * s)) {
+        if (!resizing && pressLeft && inside(winX, winY, sideW, 44f * s)) {
             pressLeft = false;
             winDragging = true;
             dragLastX = mx;
@@ -1080,11 +1134,11 @@ public final class BigCatGui extends ScriptDefaults {
         if (!winDragging) {
             return;
         }
-        if (leftDown) {
-            winOffX += mx - dragLastX;
-            winOffY += my - dragLastY;
-            dragLastX = mx;
-            dragLastY = my;
+        if (leftDown || releaseLeft) {
+            winOffX = winX - BigCatLayout.centered(scaledW, winW) + dragX() - dragLastX;
+            winOffY = winY - BigCatLayout.centeredY(scaledH, winH, s) + dragY() - dragLastY;
+            dragLastX = dragX();
+            dragLastY = dragY();
         } else {
             winDragging = false;
         }
@@ -1092,62 +1146,78 @@ public final class BigCatGui extends ScriptDefaults {
 
     /** Resolves the window's top-left from its centring offset and current size, clamped on screen. */
     private void resolveWindowPosition() {
-        // Leave room above the window for the cat's head and ears, and below it for the back paws.
-        float catTop = catHeadroom();
-        float catBottom = catFootroom();
-        float baseX = ((float) scaledW - winW) / 2f;
-        float baseY = ((float) scaledH - winH + catTop - catBottom) / 2f;
-        float maxY = (float) scaledH - winH - catBottom;
-        winX = clampF(baseX + winOffX, 4f, (float) scaledW - winW - 4f);
-        winY = clampF(baseY + winOffY, catTop, maxY < catTop ? catTop : maxY);
-        winOffX = winX - baseX;
-        winOffY = winY - baseY;
-    }
-
-    /** Space the cat's head and ear tips take above the window. */
-    private float catHeadroom() {
-        return 140f * s / 1.5f;
-    }
-
-    /** Space the cat's back paws take below the window. */
-    private float catFootroom() {
-        return 30f * s / 1.5f;
+        float baseX = BigCatLayout.centered(scaledW, winW);
+        float baseY = BigCatLayout.centeredY(scaledH, winH, s);
+        winX = BigCatLayout.position(baseX + winOffX, scaledW, winW);
+        winY = BigCatLayout.position(baseY + winOffY, scaledH, winH);
     }
 
     /** Bottom-right drag handle; writes back to the Width/Height sliders and anchors the top-left. */
     private void handleResize() {
-        float handleS = RESIZE_HANDLE * s;
+        float handleS = resizeGripSize();
         float handleX = winX + winW - handleS;
         float handleY = winY + winH - handleS;
         if (pressLeft && menuAnim > 0.98f && inside(handleX, handleY, handleS, handleS)) {
             pressLeft = false;
             resizing = true;
+            resizeAnchorX = winX;
+            resizeAnchorY = winY;
             resizeGrabX = mx - (winX + winW);
             resizeGrabY = my - (winY + winH);
+            resizeLastX = mx;
+            resizeLastY = my;
+            if (!releaseLeft) {
+                return;
+            }
         }
         if (!resizing) {
             return;
         }
-        if (!leftDown) {
+        if (!leftDown && !releaseLeft) {
             resizing = false;
             return;
         }
-        float anchorX = winX;
-        float anchorY = winY;
-        float maxW = clampF((float) scaledW - 16f, 430f, 900f);
-        float maxH = clampF((float) scaledH - 8f - catHeadroom() - catFootroom(), 270f, 700f);
-        float rw = (float) Math.round(clampF(mx - resizeGrabX - anchorX, 430f, maxW));
-        float rh = (float) Math.round(clampF(my - resizeGrabY - anchorY, 270f, maxH));
-        modules.setSlider(scriptName, S_WIDTH, rw);
-        modules.setSlider(scriptName, S_HEIGHT, rh);
-        winOffX = anchorX - ((float) scaledW - rw) / 2f;
-        winOffY = anchorY - ((float) scaledH - rh) / 2f;
+        float x = dragX();
+        float y = dragY();
+        if (resizeLastX != x) {
+            resizeAxis(Gui.bigCatWidth, x - resizeGrabX, resizeAnchorX, scaledW);
+            resizeLastX = x;
+        }
+        if (resizeLastY != y) {
+            resizeAxis(Gui.bigCatHeight, y - resizeGrabY, resizeAnchorY, scaledH);
+            resizeLastY = y;
+        }
+        updateWindowSize(1f);
+        winOffX = resizeAnchorX - BigCatLayout.centered(scaledW, winW);
+        winOffY = resizeAnchorY - BigCatLayout.centeredY(scaledH, winH, s);
+        resolveWindowPosition();
+    }
+
+    private void resizeAxis(SliderSetting setting, float edge, float anchor, float viewport) {
+        float available = viewport - anchor - BigCatLayout.MARGIN;
+        if (available < setting.getMin() || edge - anchor >= available && setting.getInput() >= available) {
+            return;
+        }
+        double value = BigCatLayout.resizedValue(
+                edge - anchor, available, setting.getMin(), setting.getMax(), setting.getInterval());
+        if (value != setting.getInput()) {
+            setting.setValueWithEvent(value);
+            markUnsaved(ModuleManager.getModule(Gui.class));
+        }
+    }
+
+    private float resizeGripSize() {
+        return Math.min(Math.min(winW, winH), Math.max(12f, RESIZE_HANDLE * s));
     }
 
     /** Press latches are consumed during drawing; clear them and any drags for the next frame. */
     private void endFrameInput() {
         pressLeft = false;
         pressRight = false;
+        if (!sawColorDrag) {
+            dragColorSetting = null;
+            dragColorPart = -1;
+        }
         if (releaseLeft) {
             sideDrag.dragging = false;
             dragSlider = null;
@@ -1165,10 +1235,10 @@ public final class BigCatGui extends ScriptDefaults {
     }
 
     private void drawResizeGrip() {
-        float hs = RESIZE_HANDLE * s;
+        float hs = resizeGripSize();
         float hx = winX + winW - hs;
         float hy = winY + winH - hs;
-        int col = inside(hx, hy, hs, hs) ? accent : 0x55FFFFFF;
+        int col = resizing || inside(hx, hy, hs, hs) ? accent : 0x99FFFFFF;
         for (int i = 1; i <= 3; i++) {
             float d = i * 3.4f * s;
             float dot = 1.3f * s;
@@ -1188,18 +1258,19 @@ public final class BigCatGui extends ScriptDefaults {
         drawSearchBox(x, y);
         txt(fSmall, "Modules", x + 14f * s, y + 86f * s, cTextFaint);
 
-        ArrayList names = categoryNames();
+        List<CategoryComponent> categories = ClickGui.categories;
         float listTop = y + 98f * s;
-        float listBot = y + winH - 10f * s;
+        float listBot = y + winH - resizeGripSize();
         float listH = listBot - listTop;
         float step = 27f * s;
-        float total = names.size() * step;
+        float total = categories.size() * step;
         float maxScroll = total - listH;
         if (maxScroll < 0f) {
             maxScroll = 0f;
         }
-        if (frameWheel != 0 && mx >= x && mx < x + sideW && my >= listTop && my <= listBot) {
+        if (frameWheel != 0 && inside(x, listTop, sideW, listH)) {
             sideScroll -= (float) frameWheel / 6f;
+            frameWheel = 0;
         }
         sideScroll = clampF(sideScroll, 0f, maxScroll);
 
@@ -1213,24 +1284,78 @@ public final class BigCatGui extends ScriptDefaults {
         }
         selAnim = approach(selAnim, 1f, 6f, frameDt);
 
-        drawCategoryList(x, names, listTop, listBot, step);
+        drawCategoryList(x, categories, listTop, listBot, step);
         drawScrollbar(barX, barW, listTop, listH, total, sideScroll, maxScroll, sideDrag.dragging);
     }
 
     private void drawLogo(float x, float y) {
-        float lx = x + 14f * s;
-        float ly = y + 12f * s;
-        float ls = 22f * s;
-        int pawColor = inside(lx, ly, ls, ls) ? logoHoverArgb(accent) : accent;
-        keystrokesmod.utility.CatRenderer.setAlpha(fadeMul);
+        float cx = x + 25f * s;
+        float cy = y + 23f * s;
+        int pawColor = inside(cx - 11f * s, cy - 11f * s, 22f * s, 22f * s) ? logoHoverArgb(accent) : accent;
+        float age = (System.nanoTime() - logoOpenedAt) * 1e-6f;
+        float drop = clampF(age / 220f, 0f, 1f);
+        float settle = clampF((age - 220f) / 340f, 0f, 1f);
+        float impact = (float) Math.sin(settle * 10.5f) * (1f - settle) * (1f - settle);
+        float idle = clampF((age - 650f) / 600f, 0f, 1f);
+        float stampY = cy
+                + (-14f * (1f - drop * drop)
+                                + 3f * Math.min(0f, impact)
+                                + (float) Math.sin(age * 0.002f) * 0.55f * idle)
+                        * s;
+        CatRenderer.setAlpha(fadeMul);
+        CatRenderer.begin();
         try {
-            keystrokesmod.utility.CatRenderer.begin();
-            keystrokesmod.utility.CatRenderer.pawIcon(lx + ls / 2f, ly + ls / 2f, ls * 0.9f, pawColor);
-            keystrokesmod.utility.CatRenderer.end();
+            for (int i = 0; i < 4; i++) {
+                float reveal = clampF((age - 220f - i * 72f) / 230f, 0f, 1f);
+                if (reveal <= 0f) {
+                    continue;
+                }
+                double angle = i * Math.PI / 2.0 + age * (i % 2 == 0 ? 0.00032 : -0.00024);
+                float spread = (13f + 5f * settle) * s;
+                float glow = 0.76f + 0.24f * (float) Math.sin(age * 0.003f + i);
+                CatRenderer.pawIcon(
+                        cx + (float) Math.cos(angle) * spread,
+                        cy + (float) Math.sin(angle) * spread * 0.8f,
+                        (4f + (i % 2) * 1.25f) * s,
+                        fadeColor(accent, 0.54f * reveal * glow));
+            }
+            gl.push();
+            try {
+                gl.translate(cx, stampY, 0f);
+                gl.rotate(-15f * (1f - drop) + 6f * impact, 0f, 0f, 1f);
+                gl.scale(0.83f + 0.17f * drop + 0.16f * impact, 0.83f + 0.17f * drop - 0.18f * impact, 1f);
+                CatRenderer.pawIcon(0f, 0f, 22f * s, fadeColor(pawColor, 0.55f + 0.45f * drop));
+            } finally {
+                gl.pop();
+            }
         } finally {
-            keystrokesmod.utility.CatRenderer.setAlpha(1f);
+            CatRenderer.end();
+            CatRenderer.setAlpha(1f);
         }
-        txt(fBig, "Feral", lx + ls + 7f * s, ly + ls / 2f, accent);
+
+        float width = 3f * s;
+        for (String letter : LOGO_LETTERS) {
+            width += tw(fBig, letter);
+        }
+        float fit =
+                Math.min(1f, Math.min(64f * s / width, 18f * s / Math.max(1f, fBig.getFontHeight() * menuFontScale)));
+        gl.push();
+        try {
+            gl.translate(x + 48f * s, cy, 0f);
+            gl.scale(fit, fit, 1f);
+            float advance = 0f;
+            for (int i = 0; i < LOGO_LETTERS.length; i++) {
+                float step = clampF((age - 145f - i * 65f) / 360f, 0f, 1f);
+                if (step > 0f) {
+                    float hop = 5f * (1f - step) - 7f * (float) Math.sin(step * Math.PI);
+                    float sway = 0.65f * (float) Math.sin(age * 0.0024f - i * 0.7f) * idle;
+                    txt(fBig, LOGO_LETTERS[i], advance, (hop + sway) * s / fit, fadeColor(accent, easeInOut(step)));
+                }
+                advance += tw(fBig, LOGO_LETTERS[i]) + 0.75f * s;
+            }
+        } finally {
+            gl.pop();
+        }
     }
 
     private void drawSearchBox(float x, float y) {
@@ -1244,6 +1369,9 @@ public final class BigCatGui extends ScriptDefaults {
             searchFocused = false;
         }
         if (clicked(sx, sy, sw, sh)) {
+            commitEdit();
+            bindModule = null;
+            bindKey = null;
             searchFocused = true;
             listBlur();
         } else if (pressLeft) {
@@ -1259,7 +1387,7 @@ public final class BigCatGui extends ScriptDefaults {
                 argb(Math.round(guiAlpha * (searchFocused || boxHov ? 0.3f : 0.2f)), 0, 0, 0));
         float scy = sy + sh / 2f;
         if (searchText.length() == 0 && !searchFocused) {
-            txt(fSmall, "Search", sx + 9f * s, scy, cTextFaint);
+            txt(fSmall, trim(fSmall, "Search", sw - 20f * s), sx + 9f * s, scy, cTextFaint);
         } else {
             String shown = trimLeft(fSmall, searchText, sw - 20f * s);
             txt(fSmall, shown, sx + 9f * s, scy, cText);
@@ -1270,25 +1398,27 @@ public final class BigCatGui extends ScriptDefaults {
         }
     }
 
-    private void drawCategoryList(float x, ArrayList names, float listTop, float listBot, float step) {
+    private void drawCategoryList(
+            float x, List<CategoryComponent> categories, float listTop, float listBot, float step) {
+        float rx = x + 6f * s;
+        float rw = sideW - 12f * s;
         float rh = 25f * s;
-        scissorOn(x, listTop, sideW, listBot - listTop);
+        beginClip(x, listTop, sideW, listBot - listTop);
         float ry = listTop - sideScroll;
-        for (int i = 0; i < names.size(); i++) {
-            String rawName = (String) names.get(i);
-            if (ry + rh > listTop && ry < listBot) {
-                float rx = x + 6f * s;
-                float rw = sideW - 12f * s;
-                boolean sel = i == tab && !searchFocused && searchText.length() == 0;
-                boolean clickable = ry >= listTop && ry + rh <= listBot;
-                boolean hov = clickable && inside(rx, ry, rw, rh);
+        for (CategoryComponent component : categories) {
+            Module.category category = component.category;
+            if (intersectsClip(rx, ry, rw, rh)) {
+                boolean sel = category == tab && !searchFocused && searchText.length() == 0;
+                boolean hov = inside(rx, ry, rw, rh);
                 float rowTop = ry < listTop ? listTop : ry;
                 float rowBot = ry + rh > listBot ? listBot : ry + rh;
+                int selectionAlpha = 0;
                 if (sel) {
                     float sp = easeInOut(selAnim);
                     float sc = 0.8f + 0.2f * sp;
                     float opT = clampF((selAnim - 0.2f) / 0.8f, 0f, 1f);
                     float op = opT * opT * opT;
+                    selectionAlpha = Math.round(138f * op * cardAlpha / 255f);
                     float ccx = rx + rw / 2f;
                     float ccy = (rowTop + rowBot) / 2f;
                     qRound(
@@ -1297,27 +1427,31 @@ public final class BigCatGui extends ScriptDefaults {
                             ccx + rw / 2f * sc,
                             ccy + (rowBot - rowTop) / 2f * sc,
                             7f * s * sc,
-                            withAlpha(accent, Math.round(138f * op * cardAlpha / 255f)));
+                            withAlpha(accent, selectionAlpha));
                 } else if (hov) {
                     qRound(rx, rowTop, rx + rw, rowBot, 7f * s, cRaised);
                 }
-                int col = sel ? contrastText() : (hov ? cText : cTextDim);
-                txt(fMid, pretty(rawName), rx + 12f * s, ry + rh / 2f, col);
-                if (clickable && clicked(rx, ry, rw, rh) && i != tab) {
-                    tab = i;
+                int col = sel ? contrastText(selectionAlpha) : (hov ? cText : cTextDim);
+                txt(fMid, trim(fMid, pretty(category.name()), rw - 22f * s), rx + 12f * s, ry + rh / 2f, col);
+                if (clicked(rx, ry, rw, rh) && category != tab) {
+                    tab = category;
+                    applyCategoryAccent();
+                    commitEdit();
+                    bindModule = null;
+                    bindKey = null;
                     searchFocused = false;
                     listBlur();
                 }
             }
             ry += step;
         }
-        scissorOff();
+        endClip();
     }
 
     /** Shared press/drag handling for both vertical scrollbars. Returns the clamped scroll. */
     private float dragScrollbar(
             ScrollDrag drag, float barX, float barW, float top, float viewH, float total, float maxScroll, float sc) {
-        if (maxScroll <= 0f) {
+        if (maxScroll <= 0f || viewH <= 0f) {
             drag.dragging = false;
             return sc;
         }
@@ -1328,9 +1462,9 @@ public final class BigCatGui extends ScriptDefaults {
             drag.dragging = true;
             drag.grab = (my >= thumbY && my <= thumbY + thumbH) ? (my - thumbY) : (thumbH / 2f);
         }
-        if (drag.dragging && leftDown) {
+        if (drag.dragging && (leftDown || releaseLeft)) {
             float span = viewH - thumbH;
-            sc = span <= 0f ? 0f : clampF(((my - drag.grab - top) / span) * maxScroll, 0f, maxScroll);
+            sc = span <= 0f ? 0f : clampF(((dragY() - drag.grab - top) / span) * maxScroll, 0f, maxScroll);
         }
         return sc;
     }
@@ -1341,7 +1475,7 @@ public final class BigCatGui extends ScriptDefaults {
         if (t < 16f * s) {
             t = 16f * s;
         }
-        return t;
+        return Math.min(Math.max(0f, viewH - s), t);
     }
 
     /** Draws a vertical scrollbar track + thumb at its current scroll position. */
@@ -1354,7 +1488,7 @@ public final class BigCatGui extends ScriptDefaults {
             float scroll,
             float maxScroll,
             boolean dragging) {
-        if (maxScroll <= 0f) {
+        if (maxScroll <= 0f || viewH <= 0f) {
             return;
         }
         float thumbH = thumbHeight(viewH, total);
@@ -1370,15 +1504,16 @@ public final class BigCatGui extends ScriptDefaults {
         float cw = winW - sideW - 22f * s;
         // Start below the cat's front paws, which reach about 21 px into the window.
         float cTop = winY + 26f * s;
-        float cBot = winY + winH - 8f * s;
-        contentTop = cTop;
-        contentBottom = cBot;
+        float cBot = winY + winH - resizeGripSize();
+        if (cw <= 0f || cBot <= cTop) {
+            return;
+        }
 
-        int idx = searchText.length() > 0 ? 31 : tab;
+        boolean searching = !searchText.isEmpty();
         ArrayList mods = visibleModules();
         int count = mods.size();
         if (count == 0) {
-            txt(fMid, "No modules found.", cx + 4f * s, cTop + 12f * s, cTextFaint);
+            txt(fMid, trim(fMid, "No modules found.", cw - 8f * s), cx + 4f * s, cTop + 12f * s, cTextFaint);
             return;
         }
 
@@ -1390,23 +1525,19 @@ public final class BigCatGui extends ScriptDefaults {
             total += hs[i] + gap;
         }
         float viewH = cBot - cTop;
-        float maxScroll = total - gap - viewH;
+        total -= gap;
+        float maxScroll = total - viewH;
         if (maxScroll < 0f) {
             maxScroll = 0f;
         }
 
-        float sc = scroll[idx];
-        int wheel = frameWheel;
-        if (wheel != 0 && !inWheelBlocks(mx, my) && mx >= cx && mx <= winX + winW && my >= cTop && my <= cBot) {
-            sc -= (float) wheel / 6f;
-        }
+        float sc = searching ? searchScroll : categoryScroll.getOrDefault(tab, 0f);
         sc = clampF(sc, 0f, maxScroll);
 
         float barX = winX + winW - 6f * s;
         float barW = SCROLLBAR_W * s;
-        drawScrollbar(barX, barW, cTop, viewH, total, sc, maxScroll, contentDrag.dragging);
         sc = dragScrollbar(contentDrag, barX, barW, cTop, viewH, total, maxScroll, sc);
-        scroll[idx] = sc;
+        drawScrollbar(barX, barW, cTop, viewH, total, sc, maxScroll, contentDrag.dragging);
 
         listX = cx;
         listY = cTop;
@@ -1422,6 +1553,17 @@ public final class BigCatGui extends ScriptDefaults {
             yy += h + gap;
         }
         endClip();
+        // The nested panel under this frame's pointer has first refusal. Unclaimed wheel moves
+        // the outer viewport on its next draw, never both viewports on the same wheel event.
+        if (frameWheel != 0 && inside(cx, cTop, winX + winW - cx, viewH)) {
+            sc = clampF(sc - frameWheel / 6f, 0f, maxScroll);
+            frameWheel = 0;
+        }
+        if (searching) {
+            searchScroll = sc;
+        } else {
+            categoryScroll.put(tab, sc);
+        }
     }
 
     /* =================================================================== animations */
@@ -1447,23 +1589,27 @@ public final class BigCatGui extends ScriptDefaults {
     }
 
     /** Colour picker reveal, driven exactly like the module settings expand. */
-    private float colorProgress(String key, boolean open) {
-        return colorAnim.towards(key, open, 3.2f, true);
+    private float colorProgress(ColorPickerState state) {
+        if (state.frame != frameId) {
+            state.frame = frameId;
+            state.reveal = approach(state.reveal, state.open ? 1f : 0f, 3.2f, frameDt);
+        }
+        return state.reveal;
     }
 
     private float groupReveal(keystrokesmod.module.Module mod, keystrokesmod.module.setting.impl.GroupSetting g) {
         if (g == null) {
             return 1f;
         }
-        return groupProgress("g|" + mod.getName() + "|" + g.getName(), g.isOpened());
+        return groupProgress("g|" + uiKey(g), g.isOpened());
     }
 
     private String modeKey(keystrokesmod.module.Module mod, keystrokesmod.module.setting.impl.SliderSetting ss) {
-        return mod.getName() + "|" + ss.getName();
+        return uiKey(ss);
     }
 
     private float cardHeight(keystrokesmod.module.Module mod) {
-        String key = mod.getName();
+        String key = uiKey(mod);
         float p = easeInOut(animFor(key, expandedCards.contains(key)));
         float h = CARD_HEAD_H * s;
         if (p > 0.0005f) {
@@ -1473,7 +1619,7 @@ public final class BigCatGui extends ScriptDefaults {
     }
 
     private void drawCard(keystrokesmod.module.Module mod, float x, float y, float w, float h) {
-        String key = mod.getName();
+        String key = uiKey(mod);
         boolean isOpen = expandedCards.contains(key);
         float p = easeInOut(curAnim(key));
         float headH = CARD_HEAD_H * s;
@@ -1508,31 +1654,32 @@ public final class BigCatGui extends ScriptDefaults {
         float togY = cyH - togH / 2f;
 
         boolean binding = bindModule == mod;
-        String bindText = binding ? "..." : keyName(mod.getKeycode());
-        float chipH = 18f * s;
-        float chipW = Math.max(22f * s, tw(fSmall, bindText) + 12f * s);
-        float chipX = x + w - 50f * s - chipW;
-        float chipY = cyH - chipH / 2f;
-
-        txt(fMid, trim(fMid, mod.getName(), chipX - (x + 13f * s) - 8f * s), x + 13f * s, cyH, on ? cText : cTextDim);
-
-        qRound(chipX, chipY, chipX + chipW, chipY + chipH, 4f * s, cField);
-        txt(fSmall, bindText, chipX + chipW / 2f - tw(fSmall, bindText) / 2f, cyH, binding ? cText : cTextDim);
-        if (clicked(chipX, chipY, chipW, chipH)) {
-            if (binding) {
-                bindModule = null;
-            } else {
-                bindModule = mod;
-                bindKey = null;
-                editing = null;
-            }
-        } else if (pressRight && inside(chipX, chipY, chipW, chipH)) {
-            pressRight = false;
-            mod.setBind(0);
-            if (binding) {
-                bindModule = null;
+        float nameRight = x + w - 8f * s;
+        if (mod.canBeBound()) {
+            String bindText = trim(
+                    fSmall,
+                    binding ? "..." : keyName(mod.getKeycode()),
+                    Math.min(64f * s, Math.max(10f * s, w - 82f * s)));
+            float chipW = Math.max(22f * s, tw(fSmall, bindText) + 12f * s);
+            float chipH = 18f * s;
+            float chipX = nameRight - chipW - (mod.canBeEnabled() ? 42f * s : 0f);
+            float chipY = cyH - chipH / 2f;
+            nameRight = chipX - 8f * s;
+            qRound(chipX, chipY, chipX + chipW, chipY + chipH, 4f * s, cField);
+            txt(fSmall, bindText, chipX + chipW / 2f - tw(fSmall, bindText) / 2f, cyH, binding ? cText : cTextDim);
+            if (clicked(chipX, chipY, chipW, chipH)) {
+                focusControl();
+                bindModule = binding ? null : mod;
+            } else if (pressRight && inside(chipX, chipY, chipW, chipH)) {
+                pressRight = false;
+                mod.setBind(0);
+                markUnsaved(mod);
+                if (binding) {
+                    bindModule = null;
+                }
             }
         }
+        txt(fMid, trim(fMid, mod.getName(), nameRight - (x + 13f * s)), x + 13f * s, cyH, on ? cText : cTextDim);
 
         if (mod.canBeEnabled()) {
             drawSwitch(togX, togY, togW, togH, key, on);
@@ -1604,7 +1751,7 @@ public final class BigCatGui extends ScriptDefaults {
 
     private float settingsHeight(keystrokesmod.module.Module mod) {
         float h = 0f;
-        ArrayList list = mod.getSettings();
+        List<Setting> list = orderedSettings(mod);
         for (int i = 0; i < list.size(); i++) {
             keystrokesmod.module.setting.Setting st = (keystrokesmod.module.setting.Setting) list.get(i);
             if (!visibleSetting(mod, st, i)) {
@@ -1640,7 +1787,7 @@ public final class BigCatGui extends ScriptDefaults {
         if (st instanceof keystrokesmod.module.setting.impl.ColorSetting) {
             keystrokesmod.module.setting.impl.ColorSetting cs = (keystrokesmod.module.setting.impl.ColorSetting) st;
             float base = 26f * s;
-            float reveal = easeInOut(colorProgress(colorKey(cs), expandedColors.contains(colorKey(cs))));
+            float reveal = easeInOut(colorProgress(pickers.computeIfAbsent(cs, ignored -> new ColorPickerState())));
             if (reveal > 0.0005f) {
                 base += colorPickerHeight() * reveal;
             }
@@ -1677,7 +1824,7 @@ public final class BigCatGui extends ScriptDefaults {
     }
 
     private void drawSettings(keystrokesmod.module.Module mod, float x, float y, float w) {
-        ArrayList list = mod.getSettings();
+        List<Setting> list = orderedSettings(mod);
         float cy = y;
         int drawn = 0;
         for (int i = 0; i < list.size(); i++) {
@@ -1746,7 +1893,7 @@ public final class BigCatGui extends ScriptDefaults {
         } else if (st instanceof keystrokesmod.module.setting.impl.KeySetting) {
             drawKeyRow((keystrokesmod.module.setting.impl.KeySetting) st, x, y, w);
         } else if (st instanceof keystrokesmod.module.setting.impl.TextSetting) {
-            drawTextRow((keystrokesmod.module.setting.impl.TextSetting) st, x, y, w);
+            drawTextRow(mod, (keystrokesmod.module.setting.impl.TextSetting) st, x, y, w);
         } else if (isListSetting(st)) {
             drawListRow(mod, st, x, y, w);
         } else {
@@ -1768,10 +1915,22 @@ public final class BigCatGui extends ScriptDefaults {
      *  action - run buttons read the setting's text, so a pending edit has to land first. */
     private void commitEdit() {
         if (editing != null) {
+            if (!editBuffer.equals(editing.getText())) {
+                markUnsaved(editingModule);
+            }
             editing.setText(editBuffer);
             editing = null;
+            editingModule = null;
             editBuffer = "";
         }
+    }
+
+    private void focusControl() {
+        commitEdit();
+        listBlur();
+        searchFocused = false;
+        bindKey = null;
+        bindModule = null;
     }
 
     private void drawBoolRow(
@@ -1805,8 +1964,7 @@ public final class BigCatGui extends ScriptDefaults {
         }
 
         boolean on = bs.isToggled();
-        if (drawToggleRow(
-                "b|" + mod.getName() + "|" + bs.getName(), bs.getName(), on, on ? accent : cTextDim, x, y, w)) {
+        if (drawToggleRow("b|" + uiKey(bs), bs.getName(), on, on ? accent : cTextDim, x, y, w)) {
             bs.toggle();
             mod.guiButtonToggled(bs);
             markUnsaved(mod);
@@ -1857,6 +2015,7 @@ public final class BigCatGui extends ScriptDefaults {
             valueText = fmt(value) + ss.getSuffix();
         }
         float labelCy = y + 8f * s;
+        valueText = trim(fSmall, valueText, w * 0.55f);
         float vw = tw(fSmall, valueText);
         txt(fSmall, trim(fSmall, ss.getName(), w - vw - 8f * s), x, labelCy, cText);
         txt(fSmall, valueText, x + w - vw, labelCy, disabled ? cTextFaint : accent);
@@ -1883,8 +2042,8 @@ public final class BigCatGui extends ScriptDefaults {
             pressLeft = false;
             dragSlider = ss;
         }
-        if (dragSlider == ss && leftDown) {
-            float d = clampF(mx - x, 0f, w);
+        if (dragSlider == ss && (leftDown || releaseLeft)) {
+            float d = clampF(dragX() - x, 0f, w);
             if (d <= 0.5f && ss.canBeDisabled) {
                 ss.setValueRaw(-1.0D);
             } else {
@@ -1915,7 +2074,7 @@ public final class BigCatGui extends ScriptDefaults {
         float boxH = 22f * s;
         float boxTotal = boxH + modeExtraHeight(ss) * reveal;
         qRound(x, boxY, x + w, boxY + boxTotal, 5f * s, cField);
-        txt(fSmall, options[idx], x + 9f * s, boxY + boxH / 2f, cText);
+        txt(fSmall, trim(fSmall, options[idx], w - 18f * s), x + 9f * s, boxY + boxH / 2f, cText);
 
         if (activated(x, boxY, w, boxH)) {
             if (ex) {
@@ -1942,7 +2101,7 @@ public final class BigCatGui extends ScriptDefaults {
                 if (ohov) {
                     qRound(x + 3f * s, ry, x + w - 3f * s, ry + 17f * s, 4f * s, C_HOVER);
                 }
-                txt(fSmall, options[k], x + 9f * s, ry + 8.5f * s, ohov ? cText : cTextDim);
+                txt(fSmall, trim(fSmall, options[k], w - 18f * s), x + 9f * s, ry + 8.5f * s, ohov ? cText : cTextDim);
                 if (visible && activated(x + 3f * s, ry, w - 6f * s, 17f * s)) {
                     ss.setValue((double) k);
                     expandedModes.remove(key);
@@ -1962,7 +2121,7 @@ public final class BigCatGui extends ScriptDefaults {
             float x,
             float y,
             float w) {
-        String key = colorKey(cs);
+        ColorPickerState state = pickers.computeIfAbsent(cs, ignored -> new ColorPickerState());
         float rowH = 26f * s;
         float cy = y + rowH / 2f;
         float sw = 18f * s;
@@ -1974,25 +2133,31 @@ public final class BigCatGui extends ScriptDefaults {
         txt(fSmall, trim(fSmall, cs.getName(), w - sw - hexW - 16f * s), x, cy, cText);
         txt(fSmall, hex, swX - 8f * s - hexW, cy, cTextDim);
         qRound(swX - 1.5f * s, swY - 1.5f * s, swX + sw + 1.5f * s, swY + sw + 1.5f * s, 5f * s, cRaised);
-        qRound(swX, swY, swX + sw, swY + sw, 4f * s, 0xFF000000 | cs.getRGB());
+        if (!cs.hasAlpha()
+                || !PickerGradient.draw(
+                        PickerGradient.SWATCH,
+                        swX,
+                        swY,
+                        sw,
+                        sw,
+                        4f * s,
+                        scale,
+                        PICKER_CHECK * s,
+                        cs.getColor(),
+                        fadeMul)) {
+            qRound(swX, swY, swX + sw, swY + sw, 4f * s, cs.getColor());
+        }
 
         if (activated(x, y, w, rowH)) {
-            if (expandedColors.contains(key)) {
-                expandedColors.remove(key);
-            } else {
-                expandedColors.add(key);
-            }
+            state.open = !state.open;
         }
-        float reveal = easeInOut(colorProgress(key, expandedColors.contains(key)));
+        float reveal = easeInOut(colorProgress(state));
         if (reveal > 0.0005f) {
-            float[] outer = saveClip();
-            float cx1 = Math.max(outer[0], x);
-            float cy1 = Math.max(outer[1], y + rowH);
-            float cx2 = Math.min(outer[0] + outer[2], x + w);
-            float cy2 = Math.min(outer[1] + outer[3], y + rowH + colorPickerHeight() * reveal);
-            scissorOn(cx1, cy1, cx2 - cx1, cy2 - cy1);
-            drawColorPicker(mod, cs, x + 7f * s, y + rowH, w - 7f * s);
-            clipRestore(outer);
+            float[] outer = clipTo(x, y + rowH, w, colorPickerHeight() * reveal);
+            if (outer != null) {
+                drawColorPicker(mod, cs, state, x + 7f * s, y + rowH, w - 7f * s);
+                clipRestore(outer);
+            }
         }
     }
 
@@ -2005,11 +2170,7 @@ public final class BigCatGui extends ScriptDefaults {
 
     /** Saturation/brightness square plus hue and alpha bars, Raven's colour picker look. */
     private void drawColorPicker(
-            keystrokesmod.module.Module mod,
-            keystrokesmod.module.setting.impl.ColorSetting cs,
-            float x,
-            float y,
-            float w) {
+            keystrokesmod.module.Module mod, ColorSetting cs, ColorPickerState state, float x, float y, float w) {
         boolean hasAlpha = cs.hasAlpha();
         float barW = PICKER_BAR_W * s;
         float gap = PICKER_GAP * s;
@@ -2017,8 +2178,8 @@ public final class BigCatGui extends ScriptDefaults {
         float sqY = y + PICKER_PAD_TOP * s;
         float sqH = PICKER_H * s;
         float sqW = w - barW - gap - (hasAlpha ? barW + gap : 0f);
-        if (sqW < 24f * s) {
-            sqW = 24f * s;
+        if (sqW <= 0f || sqH <= 0f) {
+            return;
         }
         float sqR = sqX + sqW;
         float sqB = sqY + sqH;
@@ -2031,20 +2192,36 @@ public final class BigCatGui extends ScriptDefaults {
             r = sqH / 2f;
         }
 
-        /* Hue/sat/bri are cached while picking: a pure RGB colour loses them for greys and blacks. */
-        float bri = dragColorPart >= 0 ? cachedBri : cs.getBrightness();
-        float satFromSetting = dragColorPart >= 0 ? cachedSat : cs.getSaturation();
-        boolean isBlack = bri < 0.001f;
-        boolean isGrey = satFromSetting < 0.001f;
-        if (dragColorPart < 0 && !isBlack) {
-            cachedBri = bri;
-            cachedSat = cs.getSaturation();
-            if (!isGrey) {
-                cachedHue = cs.getHue();
+        state.sync(cs);
+        if (state.open && pressLeft) {
+            int part = inside(sqX, sqY, sqW, sqH)
+                    ? 0
+                    : inside(hueX, sqY, barW, sqH) ? 1 : hasAlpha && inside(alphaX, sqY, barW, sqH) ? 2 : -1;
+            if (part >= 0) {
+                pressLeft = false;
+                dragColorSetting = cs;
+                dragColorPart = part;
             }
         }
-        float hue = dragColorPart >= 0 || isBlack || isGrey ? cachedHue : cs.getHue();
-        float sat = dragColorPart >= 0 || isBlack ? cachedSat : satFromSetting;
+        if (state.open && dragColorSetting == cs) {
+            sawColorDrag = true;
+            if (leftDown || releaseLeft) {
+                int before = cs.getColor();
+                if (dragColorPart == 0) {
+                    state.saturation = clampF((dragX() - sqX) / sqW, 0f, 1f);
+                    state.brightness = clampF(1f - (dragY() - sqY) / sqH, 0f, 1f);
+                    state.commit(cs);
+                } else if (dragColorPart == 1) {
+                    state.hue = clampF((dragY() - sqY) / sqH, 0f, 1f) * 360f;
+                    state.commit(cs);
+                } else {
+                    cs.setAlpha(Math.round(clampF((dragY() - sqY) / sqH, 0f, 1f) * 255f));
+                }
+                if (before != cs.getColor()) {
+                    markUnsaved(mod);
+                }
+            }
+        }
 
         /* Frames: rounded a unit wider than the content, so the two keep concentric corners. */
         float fr = r + 1f * s;
@@ -2054,195 +2231,44 @@ public final class BigCatGui extends ScriptDefaults {
             qRound(alphaX - 1f * s, sqY - 1f * s, alphaR + 1f * s, sqB + 1f * s, fr, cRaised);
         }
 
-        drawSatBriSquare(sqX, sqY, sqW, sqH, r, Color.HSBtoRGB(hue / 360f, 1f, 1f) | 0xFF000000);
-        drawHueBar(hueX, sqY, barW, sqH, r);
+        int hueRgb = Color.HSBtoRGB(state.hue / 360f, 1f, 1f);
+        if (!PickerGradient.draw(PickerGradient.SATURATION_VALUE, sqX, sqY, sqW, sqH, r, scale, 1f, hueRgb, fadeMul)) {
+            gradH(sqX, sqY, sqR, sqB, C_WHITE, hueRgb);
+            gradV(sqX, sqY, sqR, sqB, 0, 0xFF000000);
+        }
+        if (!PickerGradient.draw(PickerGradient.HUE, hueX, sqY, barW, sqH, r, scale, 1f, 0, fadeMul)) {
+            for (int i = 0; i < 6; i++) {
+                gradV(
+                        hueX,
+                        sqY + sqH * i / 6f,
+                        hueR,
+                        sqY + sqH * (i + 1) / 6f,
+                        Color.HSBtoRGB(i / 6f, 1f, 1f),
+                        Color.HSBtoRGB((i + 1) / 6f, 1f, 1f));
+            }
+        }
         if (hasAlpha) {
-            drawAlphaBar(cs, alphaX, sqY, barW, sqH, r);
+            if (!PickerGradient.draw(
+                    PickerGradient.ALPHA, alphaX, sqY, barW, sqH, r, scale, PICKER_CHECK * s, cs.getColor(), fadeMul)) {
+                gradV(alphaX, sqY, alphaR, sqB, 0xFF666666, 0xFF000000 | cs.getRGB());
+            }
         }
 
-        float indX = sqX + sat * sqW;
-        float indY = sqY + (1f - bri) * sqH;
-        qRect(indX - 2f * s, indY, indX + 3f * s, indY + 1f * s, C_WHITE);
-        qRect(indX, indY - 2f * s, indX + 1f * s, indY + 3f * s, C_WHITE);
-        float hueIndY = sqY + clampF(hue / 360f, 0f, 1f) * sqH;
-        qRect(hueX - 1f * s, hueIndY - 1f * s, hueR + 1f * s, hueIndY + 2f * s, C_WHITE);
+        float marker = 2.5f * s;
+        float indX = clampF(sqX + state.saturation * sqW, sqX + marker, sqR - marker);
+        float indY = clampF(sqY + (1f - state.brightness) * sqH, sqY + marker, sqB - marker);
+        qRound(indX - marker, indY - marker, indX + marker, indY + marker, marker, C_WHITE);
+        qRound(indX - marker / 2f, indY - marker / 2f, indX + marker / 2f, indY + marker / 2f, marker / 2f, C_DARK);
+        drawPickerMarker(hueX, hueR, sqY, sqH, state.hue / 360f);
         if (hasAlpha) {
-            float alphaIndY = sqY + ((float) cs.getAlpha() / 255f) * sqH;
-            qRect(alphaX - 1f * s, alphaIndY - 1f * s, alphaR + 1f * s, alphaIndY + 2f * s, C_WHITE);
-        }
-
-        if (pressLeft && inside(sqX, sqY, sqW, sqH)) {
-            pressLeft = false;
-            cacheHsb(cs);
-            dragColorSetting = cs;
-            dragColorPart = 0;
-        } else if (pressLeft && inside(hueX - 2f * s, sqY, barW + 4f * s, sqH)) {
-            pressLeft = false;
-            cacheHsb(cs);
-            dragColorSetting = cs;
-            dragColorPart = 1;
-        } else if (hasAlpha && pressLeft && inside(alphaX - 2f * s, sqY, barW + 4f * s, sqH)) {
-            pressLeft = false;
-            cacheHsb(cs);
-            dragColorSetting = cs;
-            dragColorPart = 2;
-        }
-
-        if (dragColorSetting == cs && dragColorPart >= 0 && leftDown) {
-            if (dragColorPart == 0) {
-                cachedSat = clampF((mx - sqX) / sqW, 0f, 1f);
-                cachedBri = clampF(1f - (my - sqY) / sqH, 0f, 1f);
-                cs.setFromHSB(cachedHue, cachedSat, cachedBri);
-            } else if (dragColorPart == 1) {
-                cachedHue = clampF((my - sqY) / sqH, 0f, 1f) * 360f;
-                cs.setFromHSB(cachedHue, cachedSat, cachedBri);
-            } else {
-                cs.setAlpha((int) (clampF((my - sqY) / sqH, 0f, 1f) * 255f));
-            }
-            markUnsaved(mod);
+            drawPickerMarker(alphaX, alphaR, sqY, sqH, cs.getAlpha() / 255f);
         }
     }
 
-    /** Sat/bri square: strips follow the corner arcs, each strip drawn as three exact gradient passes. */
-    private void drawSatBriSquare(float sqX, float sqY, float sqW, float sqH, float r, int hueRgb) {
-        float sqR = sqX + sqW;
-        float sqB = sqY + sqH;
-        float[] cuts = bandCuts(sqY, sqB, r, PICKER_ARC_STEPS, 1);
-        for (int i = 0; i + 1 < cuts.length; i++) {
-            float y1 = cuts[i];
-            float y2 = cuts[i + 1];
-            if (y2 - y1 < 0.05f) {
-                continue;
-            }
-            float inset = pickerInset(sqY, sqB, r, y1, y2);
-            float x1 = sqX + inset;
-            float x2 = sqR - inset;
-            qRect(x1, y1, x2, y2, hueRgb);
-            gradH(
-                    x1,
-                    y1,
-                    x2,
-                    y2,
-                    argb(Math.round(255f * (1f - clampF((x1 - sqX) / sqW, 0f, 1f))), 255, 255, 255),
-                    argb(Math.round(255f * (1f - clampF((x2 - sqX) / sqW, 0f, 1f))), 255, 255, 255));
-            drawPickerOpacityBand(x1, y1, x2, y2, sqY, sqH, 0);
-        }
-    }
-
-    /** Hue bar: one two-stop gradient per strip, sampled often enough that the sweep reads as smooth. */
-    private void drawHueBar(float x, float sqY, float w, float sqH, float r) {
-        float sqB = sqY + sqH;
-        float[] cuts = bandCuts(sqY, sqB, r, PICKER_ARC_STEPS, PICKER_HUE_STEPS);
-        for (int i = 0; i + 1 < cuts.length; i++) {
-            float y1 = cuts[i];
-            float y2 = cuts[i + 1];
-            if (y2 - y1 < 0.05f) {
-                continue;
-            }
-            float inset = pickerInset(sqY, sqB, r, y1, y2);
-            gradV(x + inset, y1, x + w - inset, y2, hueColor((y1 - sqY) / sqH), hueColor((y2 - sqY) / sqH));
-        }
-    }
-
-    private int hueColor(float t) {
-        return Color.HSBtoRGB(clampF(t, 0f, 1f), 1f, 1f) | 0xFF000000;
-    }
-
-    /** Alpha bar: checkerboard under a transparent to opaque gradient, both following the corner arcs. */
-    private void drawAlphaBar(
-            keystrokesmod.module.setting.impl.ColorSetting cs, float x, float sqY, float w, float sqH, float r) {
-        float sqB = sqY + sqH;
-        float cell = PICKER_CHECK * s;
-        int rgb = cs.getRGB();
-
-        for (float ay = sqY; ay < sqB - 0.05f; ay += cell) {
-            float a = ay;
-            float b = Math.min(ay + cell, sqB);
-            int row = (int) ((a - sqY) / cell);
-            int parts = a < sqY + r - 0.05f || b > sqB - r + 0.05f ? PICKER_ARC_STEPS : 1;
-            int cols = (int) Math.ceil(w / cell);
-            for (int p = 0; p < parts; p++) {
-                float y1 = a + (b - a) * p / parts;
-                float y2 = a + (b - a) * (p + 1) / parts;
-                float inset = pickerInset(sqY, sqB, r, y1, y2);
-                for (int c = 0; c < cols; c++) {
-                    float x1 = Math.max(x + c * cell, x + inset);
-                    float x2 = Math.min(Math.min(x + (c + 1) * cell, x + w), x + w - inset);
-                    if (x2 - x1 < 0.05f) {
-                        continue;
-                    }
-                    qRect(x1, y1, x2, y2, (c + row) % 2 == 0 ? 0xFF666666 : 0xFF999999);
-                }
-            }
-        }
-
-        float[] cuts = bandCuts(sqY, sqB, r, PICKER_ARC_STEPS, 1);
-        for (int i = 0; i + 1 < cuts.length; i++) {
-            float y1 = cuts[i];
-            float y2 = cuts[i + 1];
-            if (y2 - y1 < 0.05f) {
-                continue;
-            }
-            float inset = pickerInset(sqY, sqB, r, y1, y2);
-            drawPickerOpacityBand(x + inset, y1, x + w - inset, y2, sqY, sqH, rgb);
-        }
-    }
-
-    private void drawPickerOpacityBand(float x1, float y1, float x2, float y2, float top, float height, int rgb) {
-        int a1 = Math.round(255f * clampF((y1 - top) / height, 0f, 1f));
-        int a2 = Math.round(255f * clampF((y2 - top) / height, 0f, 1f));
-        gradV(x1, y1, x2, y2, withAlpha(rgb, a1), withAlpha(rgb, a2));
-    }
-
-    /** Y cut positions across [y1,y2]: arcSteps inside each corner arc, midCuts evenly through the middle. */
-    private float[] bandCuts(float y1, float y2, float r, int arcSteps, int midCuts) {
-        float h = y2 - y1;
-        if (r > h / 2f) {
-            r = h / 2f;
-        }
-        if (midCuts < 1) {
-            midCuts = 1;
-        }
-        float[] cuts = new float[2 * arcSteps + midCuts + 1];
-        int k = 0;
-        cuts[k++] = y1;
-        for (int i = 1; i <= arcSteps; i++) {
-            cuts[k++] = y1 + r * i / arcSteps;
-        }
-        for (int i = 1; i <= midCuts; i++) {
-            cuts[k++] = y1 + r + (h - 2f * r) * i / midCuts;
-        }
-        for (int i = 1; i < arcSteps; i++) {
-            cuts[k++] = y2 - r + r * i / arcSteps;
-        }
-        cuts[k] = y2;
-        return cuts;
-    }
-
-    /** Largest corner inset across the band [y1,y2] of an element spanning [lo,hi]. */
-    private float pickerInset(float lo, float hi, float r, float y1, float y2) {
-        return Math.max(cornerInset(lo, hi, r, y1), cornerInset(lo, hi, r, y2));
-    }
-
-    /** How far the corner arc cuts in at `y`, measured from the element's edge. */
-    private float cornerInset(float lo, float hi, float r, float y) {
-        float d = Math.min(y - lo, hi - y);
-        if (d >= r) {
-            return 0f;
-        }
-        float t = r - Math.max(0f, d);
-        return r - (float) Math.sqrt(Math.max(0f, r * r - t * t));
-    }
-
-    private void cacheHsb(keystrokesmod.module.setting.impl.ColorSetting cs) {
-        float bri = cs.getBrightness();
-        cachedBri = bri;
-        if (bri >= 0.001f) {
-            cachedSat = cs.getSaturation();
-            if (cachedSat >= 0.001f) {
-                cachedHue = cs.getHue();
-            }
-        }
+    private void drawPickerMarker(float left, float right, float top, float height, float progress) {
+        float cy = top + clampF(progress * height, s, height - s);
+        qRect(left, cy - s, right, cy + s, C_DARK);
+        qRect(left + s, cy - 0.5f * s, right - s, cy + 0.5f * s, C_WHITE);
     }
 
     /* ------------------------------------------------------------ key/text rows */
@@ -2252,7 +2278,8 @@ public final class BigCatGui extends ScriptDefaults {
         float cy = y + rowH / 2f;
         boolean binding = bindKey == ks;
         String text = binding ? "..." : keyName(ks.getKey());
-        float pw = Math.max(48f * s, tw(fSmall, text) + 16f * s);
+        float pw = Math.min(w * 0.55f, Math.max(48f * s, tw(fSmall, text) + 16f * s));
+        text = trim(fSmall, text, pw - 10f * s);
         float ph = 20f * s;
         float px = x + w - pw;
         float py = cy - ph / 2f;
@@ -2270,9 +2297,8 @@ public final class BigCatGui extends ScriptDefaults {
             if (binding) {
                 bindKey = null;
             } else {
+                focusControl();
                 bindKey = ks;
-                bindModule = null;
-                editing = null;
             }
         } else if (pressRight && inside(px, py, pw, ph)) {
             pressRight = false;
@@ -2283,12 +2309,15 @@ public final class BigCatGui extends ScriptDefaults {
         }
     }
 
-    private void drawTextRow(keystrokesmod.module.setting.impl.TextSetting ts, float x, float y, float w) {
+    private void drawTextRow(Module mod, keystrokesmod.module.setting.impl.TextSetting ts, float x, float y, float w) {
         boolean active = editing == ts;
         txt(fSmall, trim(fSmall, ts.getName(), w - 8f * s), x, y + 7f * s, cText);
 
         float by = y + 20f * s;
         float bh = 24f * s;
+        if (active && intersectsClip(x, by, w, bh)) {
+            sawEdit = true;
+        }
         qRound(x, by, x + w, by + bh, 5f * s, active ? cRaised : cField);
 
         String shown;
@@ -2308,19 +2337,18 @@ public final class BigCatGui extends ScriptDefaults {
         if (clicked(x, by, w, bh)) {
             if (active) {
                 final keystrokesmod.module.setting.impl.TextSetting target = editing;
-                editing.setText(editBuffer);
-                editing = null;
-                editBuffer = "";
+                commitEdit();
                 runSafely(new Runnable() {
                     public void run() {
                         target.submit();
                     }
                 });
             } else {
+                focusControl();
                 editing = ts;
+                editingModule = mod;
                 editBuffer = ts.getText() == null ? "" : ts.getText();
-                bindKey = null;
-                bindModule = null;
+                sawEdit = true;
             }
         }
     }
@@ -2348,7 +2376,7 @@ public final class BigCatGui extends ScriptDefaults {
     }
 
     private boolean isSearchableList(keystrokesmod.module.setting.Setting st) {
-        return isPotionList(st) || isItemList(st) || isBlockList(st);
+        return st == HUD.notificationBlacklist || isPotionList(st) || isItemList(st) || isBlockList(st);
     }
 
     private boolean isListSetting(keystrokesmod.module.setting.Setting st) {
@@ -2356,7 +2384,7 @@ public final class BigCatGui extends ScriptDefaults {
     }
 
     private String listKey(keystrokesmod.module.Module mod, keystrokesmod.module.setting.Setting st) {
-        return mod.getName() + "|" + st.getName();
+        return uiKey(st);
     }
 
     private boolean isFocusedList(keystrokesmod.module.setting.Setting st) {
@@ -2438,7 +2466,13 @@ public final class BigCatGui extends ScriptDefaults {
         if (id == null) {
             return;
         }
-        ((keystrokesmod.module.setting.impl.BlockListSetting) st).addBlock(id);
+        if (st == HUD.notificationBlacklist) {
+            if (!HUD.notificationBlacklist.addEntry(id)) {
+                return;
+            }
+        } else {
+            ((keystrokesmod.module.setting.impl.BlockListSetting) st).addBlock(id);
+        }
         markUnsaved(mod);
         listQuery = "";
         listCollapseGroup();
@@ -2461,6 +2495,9 @@ public final class BigCatGui extends ScriptDefaults {
     }
 
     private void listFocus(keystrokesmod.module.Module mod, keystrokesmod.module.setting.Setting st) {
+        commitEdit();
+        bindKey = null;
+        bindModule = null;
         String key = listKey(mod, st);
         if (!key.equals(listSearchKey)) {
             listQuery = "";
@@ -2471,6 +2508,7 @@ public final class BigCatGui extends ScriptDefaults {
         listSearchKey = key;
         listRowsKey = null;
         listOpen = true;
+        sawListFocus = true;
         searchFocused = false;
     }
 
@@ -2507,6 +2545,14 @@ public final class BigCatGui extends ScriptDefaults {
     private void listSubmit(keystrokesmod.module.Module mod, keystrokesmod.module.setting.Setting st) {
         if (listExpandedGroup != null) {
             listCollapseGroup();
+            return;
+        }
+        if (st == HUD.notificationBlacklist) {
+            // The query may have changed in the same batch of key events as Enter.
+            listEnsureRows(mod, st);
+            if (!listDropRows.isEmpty()) {
+                listRowClick(mod, st, (Object[]) listDropRows.get(0));
+            }
             return;
         }
         if (isStringList(st)) {
@@ -2573,6 +2619,25 @@ public final class BigCatGui extends ScriptDefaults {
         listDropRows = new ArrayList();
 
         if (!isSearchableList(st)) {
+            return;
+        }
+
+        if (st == HUD.notificationBlacklist) {
+            String query = listQuery.trim().toLowerCase(Locale.ROOT);
+            List<String> matches = new ArrayList<>(LIST_MAX_ROWS);
+            for (Object entry : allModules()) {
+                String name = ((Module) entry).getName();
+                if (!name.toLowerCase(Locale.ROOT).contains(query)
+                        || HUD.notificationBlacklist.containsEntry(name)
+                        || matches.stream().anyMatch(name::equalsIgnoreCase)) {
+                    continue;
+                }
+                matches.add(name);
+                listDropRows.add(new Object[] {name, null, Integer.valueOf(0), name, null, null, null});
+                if (matches.size() == LIST_MAX_ROWS) {
+                    break;
+                }
+            }
             return;
         }
 
@@ -2711,6 +2776,9 @@ public final class BigCatGui extends ScriptDefaults {
         float boxH = 24f * s;
         boolean owns = isFocusedList(st);
         boolean active = owns && listOpen;
+        if (active && intersectsClip(x, boxY, w, boxH)) {
+            sawListFocus = true;
+        }
         qRound(x, boxY, x + w, boxY + boxH, 5f * s, active ? cRaised : cField);
         drawListField(st, x, boxY, w, boxH, active);
         if (clicked(x, boxY, w, boxH)) {
@@ -2737,7 +2805,7 @@ public final class BigCatGui extends ScriptDefaults {
     /** Search text + caret, drawn inside an already-painted field box. */
     private void drawListField(
             keystrokesmod.module.setting.Setting st, float x, float boxY, float w, float boxH, boolean focused) {
-        String shown = trimLeft(fSmall, listQuery, w - 16f * s);
+        String shown = trimLeft(fSmall, listQuery, w - 19f * s);
         float tx = x + 8f * s;
         float cy = boxY + boxH / 2f;
         if (listQuery.length() == 0) {
@@ -2770,6 +2838,7 @@ public final class BigCatGui extends ScriptDefaults {
             return;
         }
         int first = (int) (listDropScroll / rowStep);
+        boolean items = isItemList(st);
         for (int i = first; i < n; i++) {
             float ry = top - listDropScroll + (float) i * rowStep;
             if (ry > top + panelH) {
@@ -2781,7 +2850,7 @@ public final class BigCatGui extends ScriptDefaults {
             Object[] row = (Object[]) rows.get(i);
             boolean hov = interactive && my >= top && my <= top + panelH && inside(x, ry, w, rowStep);
             drawListRowPill(x, ry, w, rowStep, hov);
-            float tx = listIcon((String) row[1], x, ry, rowStep);
+            float tx = listIcon((String) row[1], items, x, ry, rowStep);
             txt(
                     fSmall,
                     trim(fSmall, (String) row[0], w - (tx - x) - 8f * s),
@@ -2818,6 +2887,7 @@ public final class BigCatGui extends ScriptDefaults {
             return;
         }
         int first = (int) (sc / rowStep);
+        boolean items = isItemList(st);
         for (int i = first; i < count; i++) {
             float ry = top - sc + (float) i * rowStep;
             if (ry > top + panelH) {
@@ -2836,7 +2906,7 @@ public final class BigCatGui extends ScriptDefaults {
             boolean rhov = over && inside(x, ry, w, rowStep);
             boolean chov = over && inside(cbX, ry, cbW, rowStep);
             drawListRowPill(x, ry, w, rowStep, rhov && !chov);
-            float tx = listIcon((String) row[2], x, ry, rowStep);
+            float tx = listIcon((String) row[2], items, x, ry, rowStep);
             txt(fSmall, trim(fSmall, (String) row[0], cbX - tx - 4f * s), tx, ry + rowStep / 2f, cText);
             if (chov) {
                 qRound(cbX + 1f * s, ry + 1.5f * s, cbX + cbW - 1f * s, ry + rowStep - 1.5f * s, 4f * s, C_OFF);
@@ -2857,14 +2927,11 @@ public final class BigCatGui extends ScriptDefaults {
     /** Applies wheel input (when hovered and interactive) to a scrollable panel, returns the clamped scroll. */
     private float listScrollPanel(
             float x, float top, float w, float h, float maxScroll, float scroll, boolean interactive) {
-        if (interactive && frameWheel != 0 && inside(x, top, w, h)) {
+        if (interactive && maxScroll > 0f && frameWheel != 0 && inside(x, top, w, h)) {
             scroll -= (float) frameWheel / 6f * (LIST_ROW_H * s);
+            frameWheel = 0;
         }
-        scroll = clampF(scroll, 0f, maxScroll);
-        if (interactive && maxScroll > 0f && inside(x, top, w, h)) {
-            wheelBlocks.add(new float[] {x, top, w, h});
-        }
-        return scroll;
+        return clampF(scroll, 0f, maxScroll);
     }
 
     /** Clips to the panel rect (intersected with the active clip) and paints its rounded background.
@@ -2904,73 +2971,17 @@ public final class BigCatGui extends ScriptDefaults {
     }
 
     /** Draws a row's leading item icon (when one maps) and returns the text inset past it. */
-    private float listIcon(String storageId, float x, float ry, float rowStep) {
-        String icon = iconName(storageId);
-        if (icon == null) {
+    private float listIcon(String storageId, boolean items, float x, float ry, float rowStep) {
+        if (storageId == null) {
             return x + 8f * s;
         }
-        try {
-            render.item(new ItemStack(icon), x + 5f * s, ry + (rowStep - 8f * s) / 2f, 0.5f * s);
-        } catch (Throwable ignored) {
+        ItemStack stack = items ? ItemSearchIndex.getItemStack(storageId) : BlockSearchIndex.getItemStack(storageId);
+        if (stack == null || stack.getItem() == null) {
+            return x + 8f * s;
         }
-        return x + 16f * s;
-    }
-
-    /** Maps a Raven storage id to a vanilla name the script ItemStack(name) constructor understands, or null. */
-    private String iconName(String storageId) {
-        if (storageId == null || storageId.length() == 0) {
-            return null;
-        }
-        if (storageId.startsWith("@category:")) {
-            String c = storageId.substring(10);
-            if (c.equals("sword")) {
-                return "diamond_sword";
-            }
-            if (c.equals("bow")) {
-                return "bow";
-            }
-            if (c.equals("tool")) {
-                return "diamond_pickaxe";
-            }
-            if (c.equals("axe")) {
-                return "diamond_axe";
-            }
-            if (c.equals("pickaxe")) {
-                return "diamond_pickaxe";
-            }
-            if (c.equals("shovel")) {
-                return "diamond_shovel";
-            }
-            if (c.equals("hoe")) {
-                return "diamond_hoe";
-            }
-            if (c.equals("shears")) {
-                return "shears";
-            }
-            return null;
-        }
-        if (storageId.charAt(0) == '@') {
-            return null;
-        }
-        String id = storageId;
-        if (id.endsWith(":*")) {
-            id = id.substring(0, id.length() - 2);
-        }
-        String[] p = id.split(":");
-        if (p.length < 2 || !p[0].equals("minecraft")) {
-            return null;
-        }
-        return p.length >= 3 ? p[1] + ":" + p[2] : p[1];
-    }
-
-    private boolean inWheelBlocks(float px, float py) {
-        for (int i = 0; i < wheelBlocksPrev.size(); i++) {
-            float[] r = (float[]) wheelBlocksPrev.get(i);
-            if (px >= r[0] && px <= r[0] + r[2] && py >= r[1] && py <= r[1] + r[3]) {
-                return true;
-            }
-        }
-        return false;
+        float iconScale = 0.7f * s;
+        ClassicIcons.drawItem(stack, x + 5f * s, ry + (rowStep - 16f * iconScale) / 2f, iconScale);
+        return x + 19f * s;
     }
 
     /** Runs the modules' own guiUpdate hooks so conditional settings show/hide like they do in Raven. */
@@ -2987,15 +2998,23 @@ public final class BigCatGui extends ScriptDefaults {
     /* ------------------------------------------------------------------ data access */
 
     private ArrayList visibleModules() {
+        ArrayList<Module> out = new ArrayList<>();
         if (searchText.length() == 0) {
-            return categoryModules(tab);
+            for (CategoryComponent cc : ClickGui.categories) {
+                if (cc.category == tab) {
+                    for (ModuleComponent component : cc.modules) {
+                        out.add(component.mod);
+                    }
+                    break;
+                }
+            }
+            return out;
         }
-        String q = searchText.toLowerCase();
+        String q = searchText.toLowerCase(Locale.ROOT);
         ArrayList all = allModules();
-        ArrayList out = new ArrayList();
         for (int i = 0; i < all.size(); i++) {
             keystrokesmod.module.Module m = (keystrokesmod.module.Module) all.get(i);
-            if (m.getName().toLowerCase().contains(q)) {
+            if (m.getName().toLowerCase(Locale.ROOT).contains(q)) {
                 out.add(m);
             }
         }
@@ -3025,68 +3044,38 @@ public final class BigCatGui extends ScriptDefaults {
         return modulesCache;
     }
 
-    /**
-     * The categories in the contents cat's order: main categories by module count (largest first, the rainbow),
-     * then zombies, client, profiles and scripts. Tab indices refer to this order.
-     */
-    private ArrayList orderedCategories() {
-        if (orderedFrame == frameId) {
-            return orderedCache;
-        }
-        orderedCache.clear();
-        java.util.List<keystrokesmod.clickgui.components.impl.CategoryComponent> cats =
-                keystrokesmod.clickgui.ClickGui.categories;
-        if (cats != null) {
-            ArrayList main = new ArrayList();
-            for (keystrokesmod.clickgui.components.impl.CategoryComponent cc : cats) {
-                if (cc != null && cc.category != null && !CatColors.isSpecial(cc.category)) {
-                    main.add(cc);
-                }
-            }
-            main.sort((a, b) -> {
-                keystrokesmod.clickgui.components.impl.CategoryComponent ca =
-                        (keystrokesmod.clickgui.components.impl.CategoryComponent) a;
-                keystrokesmod.clickgui.components.impl.CategoryComponent cb =
-                        (keystrokesmod.clickgui.components.impl.CategoryComponent) b;
-                int bySize =
-                        Integer.compare(cb.getModules().size(), ca.getModules().size());
-                return bySize != 0 ? bySize : ca.category.name().compareTo(cb.category.name());
-            });
-            orderedCache.addAll(main);
-            for (keystrokesmod.module.Module.category special : CatColors.SPECIAL) {
-                for (keystrokesmod.clickgui.components.impl.CategoryComponent cc : cats) {
-                    if (cc != null && cc.category == special) {
-                        orderedCache.add(cc);
-                    }
-                }
-            }
-        }
-        orderedFrame = frameId;
-        return orderedCache;
+    private String uiKey(Object object) {
+        return Integer.toString(uiIds.computeIfAbsent(object, ignored -> ++nextUiId));
     }
 
-    private ArrayList categoryNames() {
-        ArrayList out = new ArrayList();
-        ArrayList cats = orderedCategories();
-        for (int i = 0; i < cats.size(); i++) {
-            out.add(((keystrokesmod.clickgui.components.impl.CategoryComponent) cats.get(i)).category.name());
-        }
-        return out;
-    }
-
-    private ArrayList categoryModules(int index) {
-        ArrayList out = new ArrayList();
-        ArrayList cats = orderedCategories();
-        if (index < 0 || index >= cats.size()) {
-            return out;
-        }
-        for (keystrokesmod.clickgui.components.impl.ModuleComponent mc :
-                ((keystrokesmod.clickgui.components.impl.CategoryComponent) cats.get(index)).modules) {
-            if (mc != null && mc.mod != null) {
-                out.add(mc.mod);
+    private List<Setting> orderedSettings(Module module) {
+        return frameSettings.computeIfAbsent(module, mod -> {
+            List<Setting> raw = mod.getSettings();
+            List<Setting> ordered = new ArrayList<>(raw.size());
+            Map<keystrokesmod.module.setting.impl.GroupSetting, List<Setting>> children = new IdentityHashMap<>();
+            for (Setting st : raw) {
+                if (st instanceof keystrokesmod.module.setting.impl.GroupSetting) {
+                    children.put((keystrokesmod.module.setting.impl.GroupSetting) st, new ArrayList<>());
+                }
             }
-        }
-        return out;
+            for (Setting st : raw) {
+                List<Setting> group = children.get(groupOf(st));
+                if (group != null) {
+                    group.add(st);
+                }
+            }
+            for (Setting st : raw) {
+                if (children.containsKey(groupOf(st))) {
+                    continue;
+                }
+                ordered.add(st);
+                List<Setting> group = children.get(st);
+                if (group != null) {
+                    ordered.addAll(group);
+                }
+            }
+            return ordered;
+        });
     }
 
     private keystrokesmod.module.setting.impl.GroupSetting groupOf(keystrokesmod.module.setting.Setting st) {
@@ -3113,6 +3102,12 @@ public final class BigCatGui extends ScriptDefaults {
         }
         if (st instanceof keystrokesmod.module.setting.impl.PlayerListSetting) {
             return ((keystrokesmod.module.setting.impl.PlayerListSetting) st).group;
+        }
+        if (st instanceof keystrokesmod.module.setting.impl.TextSetting) {
+            return ((keystrokesmod.module.setting.impl.TextSetting) st).group;
+        }
+        if (st instanceof keystrokesmod.module.setting.impl.KeySetting) {
+            return ((keystrokesmod.module.setting.impl.KeySetting) st).group;
         }
         return null;
     }
@@ -3156,16 +3151,12 @@ public final class BigCatGui extends ScriptDefaults {
     }
 
     private void markUnsaved(keystrokesmod.module.Module mod) {
-        if (keystrokesmod.Feral.currentProfile == null || mod.ignoreOnSave) {
+        if (keystrokesmod.Feral.currentProfile == null || mod == null || mod.ignoreOnSave) {
             return;
         }
         if (keystrokesmod.Feral.currentProfile.getModule() != null) {
             keystrokesmod.Feral.currentProfile.getModule().saved = false;
         }
-    }
-
-    private String colorKey(keystrokesmod.module.setting.impl.ColorSetting cs) {
-        return "c" + Integer.toHexString(cs.hashCode());
     }
 
     private String formatHex(keystrokesmod.module.setting.impl.ColorSetting cs) {
@@ -3246,39 +3237,42 @@ public final class BigCatGui extends ScriptDefaults {
         if (fr == null || text == null || text.length() == 0) {
             return;
         }
-        fr.drawString(text, x, centerY - (float) fr.getFontHeight() / 2f, menuTint(color), false);
+        float textScale = inMenu ? menuFontScale : 1f;
+        int tint = menuTint(color);
+        if (textScale == 1f) {
+            fr.drawString(text, x, centerY - fr.getFontHeight() / 2f, tint, false);
+            return;
+        }
+        gl.push();
+        try {
+            gl.translate(x, centerY, 0f);
+            gl.scale(textScale, textScale, 1f);
+            fr.drawString(text, 0f, -fr.getFontHeight() / 2f, tint, false);
+        } finally {
+            gl.pop();
+        }
     }
 
     private float tw(keystrokesmod.utility.font.FeralFontRenderer fr, String text) {
         if (fr == null || text == null) {
             return 0f;
         }
-        return (float) fr.getStringWidth(text);
+        return fr.getStringWidth(text) * (inMenu ? menuFontScale : 1f);
     }
 
     private String trim(keystrokesmod.utility.font.FeralFontRenderer fr, String text, float maxWidth) {
-        if (fr == null || text == null || maxWidth <= 0f) {
-            return "";
-        }
-        if (tw(fr, text) <= maxWidth) {
-            return text;
-        }
-        String out = text;
-        while (out.length() > 1 && tw(fr, out + "..") > maxWidth) {
-            out = out.substring(0, out.length() - 1);
-        }
-        return out + "..";
+        return fr == null ? "" : GuiText.fit(fr, text, maxWidth / (inMenu ? menuFontScale : 1f));
     }
 
     private String trimLeft(keystrokesmod.utility.font.FeralFontRenderer fr, String text, float maxWidth) {
         if (fr == null || text == null || maxWidth <= 0f) {
             return "";
         }
-        String out = text;
-        while (out.length() > 1 && tw(fr, out) > maxWidth) {
-            out = out.substring(1);
+        int start = 0;
+        while (start < text.length() && tw(fr, text.substring(start)) > maxWidth) {
+            start = text.offsetByCodePoints(start, 1);
         }
-        return out;
+        return text.substring(start);
     }
 
     private String pretty(String raw) {
@@ -3346,9 +3340,15 @@ public final class BigCatGui extends ScriptDefaults {
                 | Math.round(fb + (tb - fb) * t);
     }
 
-    private int contrastText() {
-        float lum = 0.2126f * ((accent >> 16) & 255) + 0.7152f * ((accent >> 8) & 255) + 0.0722f * (accent & 255);
-        return lum > 170f ? C_DARK : 0xFFF0F0F0;
+    private int contrastText(int selectionAlpha) {
+        int fill = mixColor(cPanel, accent, selectionAlpha * fadeMul / 255f);
+        double lum = 0.2126 * linear(fill >> 16 & 255) + 0.7152 * linear(fill >> 8 & 255) + 0.0722 * linear(fill & 255);
+        return lum > 0.179 ? 0xFF000000 : C_WHITE;
+    }
+
+    private static double linear(int value) {
+        double v = value / 255.0;
+        return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
     }
 
     /* -------------------------------------------------------------------- math utils */
@@ -3425,13 +3425,16 @@ public final class BigCatGui extends ScriptDefaults {
     /* ---------------------------------------------------------------------- input */
 
     private boolean inside(float x, float y, float w, float h) {
-        if (mx < x || mx > x + w || my < y || my > y + h) {
-            return false;
-        }
-        if (clipping && (my < contentTop || my > contentBottom)) {
-            return false;
-        }
-        return true;
+        return pointerIn(x, y, w, h) && (!clipping || pointerIn(clipRectX, clipRectY, clipRectW, clipRectH));
+    }
+
+    private boolean pointerIn(float x, float y, float w, float h) {
+        return mx >= x && mx < x + w && my >= y && my < y + h;
+    }
+
+    private boolean intersectsClip(float x, float y, float w, float h) {
+        return !clipping
+                || x + w > clipRectX && x < clipRectX + clipRectW && y + h > clipRectY && y < clipRectY + clipRectH;
     }
 
     private boolean clicked(float x, float y, float w, float h) {
@@ -3469,11 +3472,11 @@ public final class BigCatGui extends ScriptDefaults {
         clipRectW = w;
         clipRectH = h;
         gl.scissor(true);
-        gl.scissor(
-                (int) (x * (float) scale),
-                (int) (((float) scaledH - (y + h)) * (float) scale),
-                (int) (w * (float) scale),
-                (int) (h * (float) scale));
+        int left = (int) Math.floor(x * scale);
+        int top = (int) Math.floor(y * scale);
+        int right = (int) Math.ceil((x + w) * scale);
+        int bottom = (int) Math.ceil((y + h) * scale);
+        gl.scissor(left, framebufferHeight - bottom, w <= 0f ? 0 : right - left, h <= 0f ? 0 : bottom - top);
     }
 
     private void scissorOff() {
@@ -3517,6 +3520,44 @@ public final class BigCatGui extends ScriptDefaults {
     }
 
     /* ===================================================================== helpers */
+
+    private static final class KeyInput {
+        final char character;
+        final int code;
+
+        KeyInput(char character, int code) {
+            this.character = character;
+            this.code = code;
+        }
+    }
+
+    private static final class PointerInput {
+        boolean hasPosition, leftPress, leftRelease, rightPress;
+        int x, y, wheel, releaseX, releaseY;
+
+        void accept(int button, boolean down, int x, int y, int wheel) {
+            if (!hasPosition && (button >= 0 || wheel != 0)) {
+                hasPosition = true;
+                this.x = x;
+                this.y = y;
+            }
+            if (button == 0 && down) {
+                leftPress = true;
+            } else if (button == 0) {
+                leftRelease = true;
+                releaseX = x;
+                releaseY = y;
+            } else if (button == 1 && down) {
+                rightPress = true;
+            }
+            this.wheel += wheel;
+        }
+
+        void clear() {
+            hasPosition = leftPress = leftRelease = rightPress = false;
+            wheel = 0;
+        }
+    }
 
     /** Keyed animation values, each advanced at most once per frame (tracked by frame stamp). */
     private static final class KeyedAnim {

@@ -182,7 +182,8 @@ public class InventoryItemSearchComponent extends AbstractItemSearchComponent<In
             int bgColor) {
         RenderUtils.drawRect(left, rowTop, right, rowTop + 12.0F - 1.0F, bgColor);
         this.renderItemInRow(this.getPreviewStack(row), left + 2.0F, rowTop);
-        this.drawListRowText(row.displayName != null ? row.displayName : "", left + 13.0F, rowTop, -3355444);
+        this.drawListRowText(
+                row.displayName != null ? row.displayName : "", left + 13.0F, rowTop, right - 12f, -3355444);
         float closeX = right - 6.0F - 3.0F;
         float slotRight = closeX - 3.0F;
         float slotLeft = slotRight - this.getSlotPillWidth(row.storageId);

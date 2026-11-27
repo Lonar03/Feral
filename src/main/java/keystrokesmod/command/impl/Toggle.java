@@ -20,6 +20,8 @@ public class Toggle extends Command {
             Module module = this.findModule(input.joinArguments(0));
             if (module == null) {
                 this.replyWithHeader("&cModule not found.");
+            } else if (!module.canBeEnabled()) {
+                this.replyWithHeader("&c" + module.getName() + " cannot be toggled.");
             } else {
                 module.toggle();
                 this.replyWithHeader(
@@ -34,7 +36,7 @@ public class Toggle extends Command {
         String query = input.argumentCount() == 0 ? "" : input.joinArguments(0).toLowerCase();
 
         for (Module module : ModuleManager.modules) {
-            if (module.getName().toLowerCase().startsWith(query)) {
+            if (module.canBeEnabled() && module.getName().toLowerCase().startsWith(query)) {
                 completions.add(module.getName());
             }
         }

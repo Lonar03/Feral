@@ -5,6 +5,8 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import java.util.Map;
 import keystrokesmod.module.Module;
+import keystrokesmod.module.impl.render.HUD;
+import keystrokesmod.module.setting.Setting;
 
 /**
  * Loads profiles saved by older Raven bS versions and clients based on them (like MeowerClient): renamed modules and
@@ -37,27 +39,62 @@ final class RavenProfileCompat {
             case "Quick Switch":
                 rename(info, "Cycle preset", "Cycle profile");
                 return moduleName;
+            case "ItemESP":
+                JsonElement opacity = info.has("Display.Label Background Opacity")
+                        ? info.get("Display.Label Background Opacity")
+                        : info.get("Label Background Opacity");
+                if (!info.has("Display.Label Background Color")
+                        && !info.has("Label Background Color")
+                        && opacity != null
+                        && opacity.isJsonPrimitive()
+                        && opacity.getAsJsonPrimitive().isNumber()) {
+                    int alpha = (int) Math.round(Math.max(0, Math.min(100, opacity.getAsDouble())) * 255 / 100);
+                    info.addProperty("Display.Label Background Color", "0,0,0," + alpha);
+                }
+                return moduleName;
             default:
                 return moduleName;
         }
     }
 
-    /**
-     * The Big cat arraylist settings moved from Gui to HUD ("Arraylist: Big cat"). Profiles from MeowerClient and older
-     * Feral versions still have them in Gui; copy them into HUD where HUD doesn't have them yet.
-     */
-    static void moveGuiArraylist(Map<Module, JsonObject> loaded) {
+    static void moveHudSettings(Map<Module, JsonObject> loaded) {
         JsonObject gui = null;
-        JsonObject hud = null;
+        Map.Entry<Module, JsonObject> hudEntry = null;
         for (Map.Entry<Module, JsonObject> entry : loaded.entrySet()) {
             String name = entry.getKey().getName();
             if (name.equals("Gui")) {
                 gui = entry.getValue();
-            } else if (name.equals("HUD")) {
-                hud = entry.getValue();
+            } else if (entry.getKey() instanceof HUD) {
+                hudEntry = entry;
             }
         }
-        if (hud == null) {
+        if (hudEntry == null) {
+            return;
+        }
+        JsonObject hud = hudEntry.getValue();
+        moveGuiArraylist(gui, hud);
+        rename(hud, "Arraylist", "Arraylist.Style");
+        rename(hud, "Big cat color mode", "Arraylist.Big cat color mode");
+        if (!hud.has("Arraylist.Show arraylist")) {
+            hud.addProperty("Arraylist.Show arraylist", true);
+        }
+        if (!hud.has("Notifications.Show notifications")
+                && (gui == null || !gui.has("Notifications.Show notifications"))) {
+            hud.addProperty("Notifications.Show notifications", true);
+        }
+        for (Setting setting : hudEntry.getKey().getSettings()) {
+            String key = setting.getProfileKey();
+            if (key.startsWith("Arraylist.") && !key.equals("Arraylist.Style")) {
+                rename(hud, setting.getName(), key);
+            } else if (key.startsWith("Notifications.") && !hud.has(key) && gui != null && gui.has(key)) {
+                hud.add(key, gui.get(key));
+            }
+        }
+    }
+
+    /** Also import the original Meower arraylist when the HUD layout hasn't already been saved. */
+    private static void moveGuiArraylist(JsonObject gui, JsonObject hud) {
+        if (hud.has("Arraylist.Style")) {
             return;
         }
         boolean catShown;

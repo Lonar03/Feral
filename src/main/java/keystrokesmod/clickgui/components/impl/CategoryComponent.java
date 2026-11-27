@@ -4,12 +4,13 @@ import java.awt.Color;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import keystrokesmod.Feral;
+import keystrokesmod.clickgui.ClassicIcons;
+import keystrokesmod.clickgui.GuiText;
 import keystrokesmod.clickgui.animation.ScrollOffsetAnimation;
 import keystrokesmod.clickgui.components.Component;
 import keystrokesmod.module.Module;
@@ -20,20 +21,11 @@ import keystrokesmod.utility.Utils;
 import keystrokesmod.utility.font.FeralFontRenderer;
 import keystrokesmod.utility.profile.Manager;
 import keystrokesmod.utility.profile.Profile;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.render.TextRenderer;
-import net.minecraft.client.render.entity.ItemRenderer;
-import net.minecraft.client.render.platform.GlStateManager;
-import net.minecraft.client.render.platform.Lighting;
-import net.minecraft.enchantment.Enchantment;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
 import org.lwjgl.opengl.GL11;
 
 public class CategoryComponent {
     private static long interactionSequence;
-    private static final Map<Module.category, CategoryComponent.CategoryIconStacks> CATEGORY_ICON_STACKS =
-            buildCategoryIconStacks();
     private static final Comparator<Module> MODULE_NAME_COMPARATOR = Comparator.comparingInt(
                     CategoryComponent::getModuleNameGroup)
             .thenComparing(Module::getName, String.CASE_INSENSITIVE_ORDER)
@@ -72,7 +64,7 @@ public class CategoryComponent {
         this.width = 92.0F;
         this.x = 5.0F;
         this.moduleY = this.y = 5.0F;
-        this.titleHeight = 13.0F;
+        this.titleHeight = 16.0F;
         float moduleRenderY = this.titleHeight + 3.0F;
         this.scrollAnim.reset(this.moduleY);
         this.lastHeight = this.y + this.titleHeight + 4.0F;
@@ -333,7 +325,8 @@ public class CategoryComponent {
         this.scrollAnim.clampTarget(minScrollY, maxScrollY);
         this.moduleY = this.scrollAnim.getValue();
         this.moduleY = Math.max(minScrollY, Math.min(maxScrollY, this.moduleY));
-        float middlePos = this.x + this.width / 2.0F - titleRenderer.getStringWidth(this.category.name()) / 2.0F;
+        String title = GuiText.fit(titleRenderer, this.category.name(), this.width - 25f);
+        float middlePos = this.x + 16f + (this.width - 20f - titleRenderer.getStringWidth(title)) / 2f;
         float contentBottom = layoutMetrics.contentBottom;
         float extra;
         if (this.smoothTimer != null) {
@@ -346,7 +339,7 @@ public class CategoryComponent {
             extra = contentBottom;
         }
 
-        float targetNamePos = this.opened ? middlePos : this.x + 12.0F;
+        float targetNamePos = this.opened ? middlePos : this.x + 16f;
         float namePos;
         if (this.textTimer == null) {
             namePos = targetNamePos;
@@ -370,9 +363,13 @@ public class CategoryComponent {
                 (this.opened || this.hovering) && Gui.rainBowOutlines.isToggled()
                         ? RenderUtils.setAlpha(Utils.getChroma(2L, 700L), 0.5)
                         : REGULAR_OUTLINE2);
-        this.renderItemForCategory(
-                this.category, (int) (this.x + 1.0F), (int) (this.y + 4.0F), this.opened || this.hovering);
-        titleRenderer.drawString(this.category.name(), namePos, this.y + 4.0F, CATEGORY_NAME_COLOR, false);
+        ClassicIcons.drawCategory(this.category, this.x + 1f, this.y + 4f, this.opened || this.hovering);
+        titleRenderer.drawString(
+                title,
+                namePos,
+                this.y + (this.titleHeight - titleRenderer.getFontHeight()) / 2f,
+                CATEGORY_NAME_COLOR,
+                false);
         float moduleAreaTop = this.y + this.titleHeight + 3.0F;
         float scissorBottom = extra - 1.0F;
         float moduleAreaHeight = Math.max(0.0F, scissorBottom - moduleAreaTop);
@@ -455,26 +452,6 @@ public class CategoryComponent {
         return x >= this.x - 2.0F && x <= this.x + this.width + 2.0F && y >= this.y && y <= this.lastHeight;
     }
 
-    private void renderItemForCategory(Module.category category, int x, int y, boolean enchant) {
-        ItemRenderer renderItem = Minecraft.getInstance().getItemRenderer();
-        double scale = 0.55;
-        GlStateManager.pushMatrix();
-        GlStateManager.scaled(scale, scale, scale);
-        CategoryComponent.CategoryIconStacks iconStacks = CATEGORY_ICON_STACKS.get(category);
-        ItemStack itemStack = iconStacks == null ? null : (enchant ? iconStacks.activeStack : iconStacks.normalStack);
-        if (itemStack != null) {
-            Lighting.turnOnGui();
-            GlStateManager.disableBlend();
-            GlStateManager.translatef((float) (x / scale), (float) (y / scale), 0.0F);
-            renderItem.renderGuiItem(itemStack, 0, 0);
-            GlStateManager.enableBlend();
-            Lighting.turnOff();
-        }
-
-        GlStateManager.scalef(1.0F, 1.0F, 1.0F);
-        GlStateManager.popMatrix();
-    }
-
     private float getCurrentCategoryBottomFromContent() {
         if (this.modules.isEmpty() || !this.opened && this.smoothTimer == null) {
             return this.y + this.titleHeight + 4.0F;
@@ -489,10 +466,10 @@ public class CategoryComponent {
             return this.lastNamePos;
         }
 
-        float middlePos = this.x
-                + this.width / 2.0F
-                - Gui.getClickGuiHeaderFontRenderer().getStringWidth(this.category.name()) / 2.0F;
-        return this.opened ? middlePos : this.x + 12.0F;
+        FeralFontRenderer renderer = Gui.getClickGuiHeaderFontRenderer();
+        String title = GuiText.fit(renderer, this.category.name(), this.width - 25f);
+        float middlePos = this.x + 16f + (this.width - 20f - renderer.getStringWidth(title)) / 2f;
+        return this.opened ? middlePos : this.x + 16f;
     }
 
     private float getCurrentAnimatedCategoryHeight() {
@@ -605,87 +582,6 @@ public class CategoryComponent {
                     Math.max(0.0F, visibleHeight), minScrollY, contentBottom);
         } else {
             return new CategoryComponent.CategoryLayoutMetrics(0.0F, this.y, this.y + this.titleHeight + 4.0F);
-        }
-    }
-
-    private static Map<Module.category, CategoryComponent.CategoryIconStacks> buildCategoryIconStacks() {
-        EnumMap<Module.category, CategoryComponent.CategoryIconStacks> iconStacks =
-                new EnumMap<>(Module.category.class);
-
-        for (Module.category category : Module.category.values()) {
-            ItemStack normalStack = createCategoryIconStack(category, false);
-            ItemStack activeStack = createCategoryIconStack(category, true);
-            if (normalStack != null && activeStack != null) {
-                iconStacks.put(category, new CategoryComponent.CategoryIconStacks(normalStack, activeStack));
-            }
-        }
-
-        return iconStacks;
-    }
-
-    private static ItemStack createCategoryIconStack(Module.category category, boolean active) {
-        ItemStack itemStack;
-        switch (category) {
-            case combat:
-                itemStack = new ItemStack(Items.DIAMOND_SWORD);
-                break;
-            case movement:
-                itemStack = new ItemStack(Items.DIAMOND_BOOTS);
-                break;
-            case player:
-                itemStack = new ItemStack(Items.GOLDEN_APPLE);
-                break;
-            case world:
-                itemStack = new ItemStack(Items.FILLED_MAP);
-                break;
-            case render:
-                itemStack = new ItemStack(Items.ENDER_EYE);
-                break;
-            case minigames:
-                itemStack = new ItemStack(Items.GOLD_INGOT);
-                break;
-            case network:
-                itemStack = new ItemStack(Items.COMPARATOR);
-                break;
-            case other:
-                itemStack = new ItemStack(Items.CLOCK);
-                break;
-            case client:
-                itemStack = new ItemStack(Items.COMPASS);
-                break;
-            case profiles:
-                itemStack = new ItemStack(Items.BOOK);
-                break;
-            case scripts:
-                itemStack = new ItemStack(Items.REDSTONE);
-                break;
-            case zombies:
-                itemStack = new ItemStack(Items.SKULL, 1, 2); // zombie head
-                break;
-            default:
-                return null;
-        }
-
-        if (!active) {
-            return itemStack;
-        }
-
-        if (category != Module.category.player) {
-            itemStack.addEnchantment(Enchantment.UNBREAKING, 2);
-        } else {
-            itemStack.setDamage(1);
-        }
-
-        return itemStack;
-    }
-
-    private static final class CategoryIconStacks {
-        private final ItemStack normalStack;
-        private final ItemStack activeStack;
-
-        private CategoryIconStacks(ItemStack normalStack, ItemStack activeStack) {
-            this.normalStack = normalStack;
-            this.activeStack = activeStack;
         }
     }
 
