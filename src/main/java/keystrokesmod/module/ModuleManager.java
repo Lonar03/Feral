@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.Map;
 import keystrokesmod.Feral;
 import keystrokesmod.module.impl.client.ChatCommands;
-import keystrokesmod.module.impl.client.CommandLine;
 import keystrokesmod.module.impl.client.Gui;
 import keystrokesmod.module.impl.client.Relationships;
 import keystrokesmod.module.impl.client.Settings;
@@ -194,7 +193,6 @@ public class ModuleManager {
     public static QuickSwitch quickSwitch;
     public static AimAssist aimAssist;
     public static MovementFix movementFix;
-    public static CommandLine commandLine;
     public static LongJump longJump;
     public static Speed speed;
     public static AntiBot antiBot;
@@ -252,7 +250,6 @@ public class ModuleManager {
 
     public void register() {
         this.addModule(chatCommands = new ChatCommands());
-        this.addModule(commandLine = new CommandLine());
         this.addModule(new Gui());
         this.addModule(new Settings());
         this.addModule(relationships = new Relationships());

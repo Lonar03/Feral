@@ -19,4 +19,15 @@ public class MixinGuiPlayerTabOverlay {
             cir.setReturnValue(AccountHider.getTabName(networkPlayerInfoIn, (String) cir.getReturnValue()));
         }
     }
+
+    @Inject(method = "getDisplayName", at = @At("RETURN"), cancellable = true)
+    private void murderMystery$tabIcon(PlayerInfo networkPlayerInfoIn, CallbackInfoReturnable<String> cir) {
+        if (ModuleManager.murderMystery != null && networkPlayerInfoIn.getProfile() != null) {
+            String icon = ModuleManager.murderMystery.getNameIcon(
+                    networkPlayerInfoIn.getProfile().getId());
+            if (!icon.isEmpty()) {
+                cir.setReturnValue(cir.getReturnValue() + icon);
+            }
+        }
+    }
 }

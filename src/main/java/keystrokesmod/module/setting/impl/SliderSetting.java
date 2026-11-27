@@ -21,6 +21,7 @@ public class SliderSetting extends Setting {
     public GroupSetting groupSetting;
     private String[] legacyProfileKeys;
     private boolean allowOutOfRangeProfileValues;
+    private String profileKeyOverride;
 
     public SliderSetting(
             GroupSetting groupSetting,
@@ -299,7 +300,16 @@ public class SliderSetting extends Setting {
 
     @Override
     public String getProfileKey() {
+        if (this.profileKeyOverride != null) {
+            return this.profileKeyOverride;
+        }
         return this.groupSetting == null ? this.getName() : this.groupSetting.getName() + "." + this.getName();
+    }
+
+    /** Saves this slider under its own config key, for when another setting in the module has the same name. */
+    public SliderSetting setProfileKey(String profileKey) {
+        this.profileKeyOverride = profileKey;
+        return this;
     }
 
     public double getInput() {

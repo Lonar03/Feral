@@ -1,5 +1,6 @@
 package keystrokesmod.command.impl;
 
+import java.util.List;
 import keystrokesmod.command.Command;
 import keystrokesmod.command.CommandInput;
 import keystrokesmod.module.Module;
@@ -13,7 +14,14 @@ public class ShowAll extends Command {
     @Override
     public void execute(CommandInput input) {
         if (input.argumentCount() > 0 && !"all".equalsIgnoreCase(input.getArgument(0))) {
-            this.syntaxError();
+            // [module]: one module (moved here from the old command line).
+            Module module = CommandValues.findModule(input.joinArguments(0));
+            if (module == null) {
+                this.replyWithHeader("&cModule not found.");
+            } else {
+                module.setHidden(false);
+                this.replyWithHeader("&7Made &b" + module.getName() + " &7visible in HUD.");
+            }
         } else {
             int count = 0;
 
@@ -26,5 +34,15 @@ public class ShowAll extends Command {
 
             this.replyWithHeader("&7Made &a" + count + " &7module" + (count == 1 ? "" : "s") + " visible in HUD.");
         }
+    }
+
+    @Override
+    public List<String> suggest(CommandInput input) {
+        return CommandValues.moduleSuggestions(input.argumentCount() == 0 ? "" : input.joinArguments(0));
+    }
+
+    @Override
+    public int getSuggestionArgumentStart(CommandInput input) {
+        return 0;
     }
 }

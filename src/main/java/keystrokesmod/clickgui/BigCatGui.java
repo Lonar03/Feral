@@ -590,6 +590,9 @@ public final class BigCatGui extends ScriptDefaults {
 
         float y = bottom ? (scaledH - margin - rowH) : margin;
         float step = rowH + 1.5f * as;
+        float rowIndex = 0f;
+        // Category: follow the Big Cat GUI's selected tab (accent is refreshed every frame in applySettings).
+        boolean categoryColor = HUD.isCategoryColorMode();
         for (int i = 0; i < n; i++) {
             keystrokesmod.module.Module m = (keystrokesmod.module.Module) shown.get(i);
             String name = m.getName();
@@ -608,16 +611,40 @@ public final class BigCatGui extends ScriptDefaults {
             if (aop > 0.001f) {
                 qRound(x, y, x + w, y + rowH, 3.5f * as, argb(Math.round(115f * p * aop), 0, 0, 0));
             }
+            // Bar and name use the HUD module's color settings (Color mode, wave, theme).
             float barX = right ? (x + w - bar) : x;
-            qRect(barX, y, barX + bar, y + rowH, withAlpha(accent, a));
+            qRect(
+                    barX,
+                    y,
+                    barX + bar,
+                    y + rowH,
+                    withAlpha(categoryColor ? accent : HUD.getArraylistColor(rowIndex, barX + bar / 2f), a));
 
             float tx = right ? (x + padX) : (x + padX + bar);
-            txt(fr, name, tx, y + rowH / 2f, argb(a, 255, 255, 255));
+            if (HUD.isHorizontalWaveColor() && fr != null) {
+                final float row = rowIndex;
+                final float textX = tx;
+                fr.drawGlyphString(
+                        name,
+                        tx,
+                        y + rowH / 2f - (float) fr.getFontHeight() / 2f,
+                        (ch, xOff, gw, fmt) ->
+                                menuTint(withAlpha(HUD.getArraylistColor(row, textX + xOff + gw * 0.5f), a)),
+                        false);
+            } else {
+                txt(
+                        fr,
+                        name,
+                        tx,
+                        y + rowH / 2f,
+                        withAlpha(categoryColor ? accent : HUD.getArraylistColor(rowIndex, tx), a));
+            }
             if (suffix.length() > 0 && infoF > 0.001f) {
                 txt(fr, suffix, tx + nameW + tw(fr, " "), y + rowH / 2f, argb(Math.round(a * infoF), 176, 176, 176));
             }
 
             y += bottom ? -step * p : step * p;
+            rowIndex += p;
             if (y < 0f || y > (float) scaledH) {
                 break;
             }

@@ -22,6 +22,7 @@ import net.minecraft.client.render.Window;
 
 public class HUD extends Module {
     private static final String[] COLOR_MODES = new String[] {"Static", "Gradient", "Rainbow", "Theme"};
+    private static final String[] COLOR_MODES2 = new String[] {"Static", "Gradient", "Rainbow", "Theme", "Category"};
     private static final String[] WAVE_AXES = new String[] {"Vertical", "Horizontal"};
     private static final String[] VERTICAL_WAVE_DIRECTIONS = new String[] {"Down", "Up"};
     private static final String[] HORIZONTAL_WAVE_DIRECTIONS = new String[] {"Left", "Right"};
@@ -31,6 +32,7 @@ public class HUD extends Module {
     private static final long HUD_RAINBOW_PERIOD_MS = 7500L;
     private static final double HUD_WAVE_ANGLE_SCALE = 0.12;
     public static SliderSetting colorMode;
+    public static SliderSetting colorMode2;
     public static SliderSetting theme;
     public static ColorSetting hudColor;
     public static ColorSetting hudColor2;
@@ -68,6 +70,7 @@ public class HUD extends Module {
     private String lastHudFontName = "";
     private float lastHudFontScale = -1.0F;
     private static final int THEME_COLOR_MODE = 3;
+    private static final int CATEGORY_COLOR_MODE = 4;
     private static final int DEFAULT_THEME_INDEX = Theme.DEFAULT_THEME_INDEX;
 
     public HUD() {
@@ -77,6 +80,9 @@ public class HUD extends Module {
         this.registerSetting(catScale = new SliderSetting("Arraylist scale", "x", 1.0, 0.6, 2.0, 0.05));
         this.registerSetting(catOpacity = new SliderSetting("Arraylist opacity", "%", 100.0, 0.0, 100.0, 1.0));
         this.registerSetting(colorMode = new SliderSetting("Color mode", 0, COLOR_MODES));
+        // Big cat only (adds Category), shown in place of colorMode. Same label, own config key.
+        this.registerSetting(
+                colorMode2 = new SliderSetting("Color mode", 0, COLOR_MODES2).setProfileKey("Big cat color mode"));
         this.registerSetting(theme = new SliderSetting("Theme", DEFAULT_THEME_INDEX, Theme.THEMES_SETTING));
         this.registerSetting(hudColor = new ColorSetting("Color", 255, 255, 255));
         this.registerSetting(hudColor2 = new ColorSetting("Color 2", 85, 85, 255));
@@ -101,19 +107,21 @@ public class HUD extends Module {
 
     @Override
     public void guiUpdate() {
-        boolean bigCat = arraylistStyle != null && (int) arraylistStyle.getInput() == 1;
+        boolean bigCat = isBigCatStyle();
         for (Setting setting : this.getSettings()) {
             if (setting == arraylistStyle || setting == showInfo) {
                 continue;
             }
+            if (setting == colorMode || setting == colorMode2) {
+                setting.setVisible(setting == activeColorMode(), this);
+                continue;
+            }
             boolean catSetting = setting == catCorner || setting == catScale || setting == catOpacity;
-            setting.setVisible(catSetting == bigCat, this);
-        }
-        if (bigCat) {
-            return;
+            // The color settings are shared by both arraylist styles, the rest belongs to one of them.
+            setting.setVisible(catSetting ? bigCat : !bigCat || isColorSetting(setting), this);
         }
 
-        int mode = colorMode == null ? 0 : (int) colorMode.getInput();
+        int mode = activeColorModeIndex();
         boolean staticMode = mode == 0;
         boolean gradientMode = mode == 1;
         boolean rainbowMode = mode == 2;
@@ -151,6 +159,35 @@ public class HUD extends Module {
         if (waveLength != null) {
             waveLength.setVisible(showWaveSettings, this);
         }
+    }
+
+    private static boolean isColorSetting(Setting setting) {
+        return setting == theme
+                || setting == hudColor
+                || setting == hudColor2
+                || setting == waveAxis
+                || setting == verticalWaveDirection
+                || setting == horizontalWaveDirection
+                || setting == waveSpeed
+                || setting == waveLength;
+    }
+
+    /**
+     * HUD color for the Big cat arraylist. {@code row} is how many rows (fractional while animating) come before this
+     * one, {@code x} is the screen x of the bar or glyph being colored (only used by horizontal waves).
+     */
+    public static int getArraylistColor(double row, double x) {
+        return getHudColor(hudWavePhase(row * getVerticalWaveStep(), x));
+    }
+
+    /** Big cat "Category": the arraylist uses the accent of the category tab selected in the Big Cat GUI. */
+    public static boolean isCategoryColorMode() {
+        return activeColorModeIndex() == CATEGORY_COLOR_MODE;
+    }
+
+    /** Whether the color changes along x, so arraylist text has to be colored per glyph. */
+    public static boolean isHorizontalWaveColor() {
+        return shouldUseHorizontalWaveText();
     }
 
     /** Whether the HUD should use the Big Cat GUI's arraylist renderer. */
@@ -360,7 +397,7 @@ public class HUD extends Module {
         if (module.isHidden()) {
             return true;
         } else {
-            return module == ModuleManager.commandLine ? true : module instanceof Velocity && removeVelocity;
+            return module instanceof Velocity && removeVelocity;
         }
     }
 
@@ -533,11 +570,7 @@ public class HUD extends Module {
     }
 
     private static boolean shouldUseHorizontalWaveText() {
-        if (colorMode == null) {
-            return false;
-        }
-
-        int mode = (int) colorMode.getInput();
+        int mode = activeColorModeIndex();
         return (mode == 1 || mode == 2) && !hudWaveIsVertical();
     }
 
@@ -557,11 +590,12 @@ public class HUD extends Module {
         return horizontalWaveDirection != null && (int) horizontalWaveDirection.getInput() != 0 ? 1 : -1;
     }
 
+    /** Category mode has no single color, so it falls back to Color here (see getArraylistColor). */
     public static int getHudColor(double gradientOffset) {
-        if (colorMode == null) {
+        if (activeColorMode() == null) {
             return 16777215;
         } else {
-            int mode = (int) colorMode.getInput();
+            int mode = activeColorModeIndex();
             if (mode == 3) {
                 return Theme.getGradient(getSelectedThemeIndex(), gradientOffset);
             } else if (mode == 2) {
@@ -600,13 +634,27 @@ public class HUD extends Module {
     }
 
     private static boolean isThemeMode() {
-        return colorMode != null && (int) colorMode.getInput() == 3;
+        return activeColorModeIndex() == THEME_COLOR_MODE;
     }
 
     private static int getSelectedThemeIndex() {
         return theme != null && theme.getOptions().length != 0
                 ? (int) Math.max(0.0, Math.min(theme.getOptions().length - 1, theme.getInput()))
                 : DEFAULT_THEME_INDEX;
+    }
+
+    private static boolean isBigCatStyle() {
+        return arraylistStyle != null && (int) arraylistStyle.getInput() == 1;
+    }
+
+    /** The Color mode slider of the selected arraylist style: colorMode2 (with Category) for Big cat. */
+    private static SliderSetting activeColorMode() {
+        return isBigCatStyle() ? colorMode2 : colorMode;
+    }
+
+    private static int activeColorModeIndex() {
+        SliderSetting mode = activeColorMode();
+        return mode == null ? 0 : (int) mode.getInput();
     }
 
     public static class EditScreen extends Screen {
@@ -873,10 +921,7 @@ public class HUD extends Module {
 
         private boolean empty() {
             for (Module module : ModuleManager.organizedModules) {
-                if (module.isEnabled()
-                        && !module.getName().equals("HUD")
-                        && !module.isHidden()
-                        && module != ModuleManager.commandLine) {
+                if (module.isEnabled() && !module.getName().equals("HUD") && !module.isHidden()) {
                     return false;
                 }
             }

@@ -11,19 +11,15 @@ import keystrokesmod.clickgui.components.impl.CategoryComponent;
 import keystrokesmod.clickgui.components.impl.ModuleComponent;
 import keystrokesmod.clickgui.components.impl.SliderComponent;
 import keystrokesmod.module.Module;
-import keystrokesmod.module.impl.client.CommandLine;
 import keystrokesmod.module.impl.client.Gui;
 import keystrokesmod.module.setting.impl.SliderSetting;
 import keystrokesmod.platform.ornithe.ForgeEvents;
-import keystrokesmod.utility.CommandHandler;
 import keystrokesmod.utility.RenderUtils;
 import keystrokesmod.utility.Timer;
 import keystrokesmod.utility.shader.BlurUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.game.inventory.SurvivalInventoryScreen;
-import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.client.render.TextRenderer;
 import net.minecraft.client.render.Window;
 import net.minecraft.client.render.platform.GlStateManager;
@@ -38,8 +34,6 @@ public class ClickGui extends Screen {
     private Timer backgroundFade;
     private long openedAt;
     private Window sr;
-    private ButtonWidget commandLineSend;
-    private TextFieldWidget commandLineInput;
     public static ArrayList<CategoryComponent> categories;
     private int actualScreenWidth;
     private int actualScreenHeight;
@@ -107,10 +101,6 @@ public class ClickGui extends Screen {
         }
 
         this.reloadModulesForCurrentMode();
-        (this.commandLineInput = new TextFieldWidget(1, this.minecraft.textRenderer, 22, this.height - 100, 150, 20))
-                .setMaxLength(256);
-        this.buttons.add(this.commandLineSend = new ButtonWidget(2, 22, this.height - 70, 150, 20, "Send"));
-        this.commandLineSend.visible = CommandLine.opened;
         this.previousScale = configuredScale;
     }
 
@@ -203,35 +193,6 @@ public class ClickGui extends Screen {
                     this.minecraft.player);
             GlStateManager.enableBlend();
             GlStateManager.popMatrix();
-        }
-
-        if (CommandLine.opened) {
-            if (!this.commandLineSend.visible) {
-                this.commandLineSend.visible = true;
-            }
-
-            int r = CommandLine.animate.isToggled() ? CommandLine.animation.getValueInt(0, 200, 2) : 200;
-            if (CommandLine.closed) {
-                r = 200 - r;
-                if (r == 0) {
-                    CommandLine.closed = false;
-                    CommandLine.opened = false;
-                    this.commandLineSend.visible = false;
-                }
-            }
-
-            fill(0, 0, r, this.height, -1089466352);
-            this.drawHorizontalLine(0, r - 1, this.height - 345, -1);
-            this.drawHorizontalLine(0, r - 1, this.height - 115, -1);
-            fill(r - 1, 0, r, this.height, -1);
-            CommandHandler.renderCommandOutput(this.textRenderer, this.height, r, this.sr.getScale());
-            int x2 = r - 178;
-            this.commandLineInput.x = x2;
-            this.commandLineSend.x = x2;
-            this.commandLineInput.render();
-            super.render(logicalMouseX, logicalMouseY, p);
-        } else if (CommandLine.closed) {
-            CommandLine.closed = false;
         }
 
         GlStateManager.popMatrix();
@@ -443,11 +404,6 @@ public class ClickGui extends Screen {
             }
         }
 
-        if (CommandLine.opened) {
-            this.commandLineInput.mouseClicked(mouseX, mouseY, mouseButton);
-            super.mouseClicked(mouseX, mouseY, mouseButton);
-        }
-
         if (mouseButton == 0 || mouseButton == 1) {
             FocusableTextComponent focusedComponent = this.findFocusedTextComponentAt(mouseX, mouseY);
             this.enforceSingleFocusedTextInput(focusedComponent);
@@ -544,26 +500,11 @@ public class ClickGui extends Screen {
                     }
                 }
             }
-
-            if (CommandLine.opened) {
-                String cm = this.commandLineInput.getText();
-                if (k == 28 && !cm.isEmpty()) {
-                    CommandHandler.runCommand(this.commandLineInput.getText());
-                    this.commandLineInput.setText("");
-                    return;
-                }
-
-                this.commandLineInput.keyPressed(t, k);
-            }
         }
     }
 
     private boolean adjustHoveredSlider(int keyCode) {
         if (keyCode != 203 && keyCode != 205) {
-            return false;
-        }
-
-        if (CommandLine.opened && this.commandLineInput.isFocused()) {
             return false;
         }
 
@@ -617,7 +558,6 @@ public class ClickGui extends Screen {
             SliderComponent hoveredSlider = this.getHoveredSlider(mouseX, mouseY);
             if (Keyboard.isKeyDown(heldKey)
                     && !this.binding()
-                    && (!CommandLine.opened || !this.commandLineInput.isFocused())
                     && hoveredSlider != null
                     && hoveredSlider.sliderSetting == this.heldArrowSlider) {
                 long now = System.currentTimeMillis();
@@ -641,13 +581,6 @@ public class ClickGui extends Screen {
         this.heldArrowDirection = 0;
         this.arrowHoldStartedAt = 0L;
         this.lastArrowAdjustmentAt = 0L;
-    }
-
-    public void buttonClicked(ButtonWidget b) {
-        if (b == this.commandLineSend) {
-            CommandHandler.runCommand(this.commandLineInput.getText());
-            this.commandLineInput.setText("");
-        }
     }
 
     public void removed() {
