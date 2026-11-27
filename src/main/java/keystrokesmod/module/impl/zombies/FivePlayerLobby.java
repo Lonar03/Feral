@@ -47,6 +47,7 @@ public class FivePlayerLobby extends Module {
         "/play arcade_zombies_prison"
     };
     private static final String[] PACKET_NAMES = {"Right click", "Left click", "Both"};
+    private static final String[] TIMING_NAMES = {"Before warp", "On world load"};
     private static final Pattern JOIN_PATTERN = Pattern.compile("^(\\S+) has joined \\((\\d+)/(\\d+)\\)!$");
     private static final String TAG = "§d[Quintet] ";
 
@@ -54,6 +55,8 @@ public class FivePlayerLobby extends Module {
     public static SliderSetting delaySec;
     private final TextSetting keyword;
     private final SliderSetting map;
+    private final SliderSetting timing;
+    private final SliderSetting kickDelaySec;
     private final SliderSetting actionDelayMs;
     private final SliderSetting packet;
     private final KeySetting selfInteractKey;
@@ -81,6 +84,8 @@ public class FivePlayerLobby extends Module {
         this.registerSetting(this.keyword = new TextSetting("Keyword", "frty1", "party chat trigger", 32));
         this.registerSetting(this.map = new SliderSetting("Map", 1, MAP_NAMES));
         this.registerSetting(delaySec = new SliderSetting("Delay (sec)", 3.0, 0.5, 10.0, 0.1));
+        this.registerSetting(this.timing = new SliderSetting("Timing", 0, TIMING_NAMES));
+        this.registerSetting(this.kickDelaySec = new SliderSetting("Kick delay (sec)", 1.5, 0.0, 10.0, 0.1));
         this.registerSetting(this.actionDelayMs = new SliderSetting("Action delay", " ms", 0.0, 0.0, 5000.0, 50.0));
         this.registerSetting(this.packet = new SliderSetting("Self interact", 0, PACKET_NAMES));
         this.registerSetting(this.selfInteractKey = new KeySetting("Self interact key", 0));
@@ -93,7 +98,10 @@ public class FivePlayerLobby extends Module {
         FivePlayerLobby.Role r = this.getRole();
         this.map.setVisible(r == FivePlayerLobby.Role.Leader, this);
         delaySec.setVisible(r == FivePlayerLobby.Role.Leader, this);
-        this.actionDelayMs.setVisible(r == FivePlayerLobby.Role.Limbo || r == FivePlayerLobby.Role.SelfKick, this);
+        boolean acts = r == FivePlayerLobby.Role.Limbo || r == FivePlayerLobby.Role.SelfKick;
+        this.timing.setVisible(acts, this);
+        this.kickDelaySec.setVisible(acts && this.isBeforeWarp(), this);
+        this.actionDelayMs.setVisible(acts && !this.isBeforeWarp(), this);
         this.keyword.setVisible(r != FivePlayerLobby.Role.Watch, this);
     }
 
@@ -113,6 +121,11 @@ public class FivePlayerLobby extends Module {
         this.pendingCommand = null;
         this.armed = false;
         this.pendingActionAt = 0L;
+    }
+
+    /** Before warp: act a set time after the keyword, while still in the old lobby. */
+    private boolean isBeforeWarp() {
+        return (int) this.timing.getInput() == 0;
     }
 
     private FivePlayerLobby.Role getRole() {
@@ -170,6 +183,10 @@ public class FivePlayerLobby extends Module {
             this.pendingCommand = MAP_COMMANDS[index];
             this.commandCountdownTicks = Math.max(1, (int) Math.round(delaySec.getInput() * 20.0));
             this.log(reason + ": " + this.pendingCommand + " in " + delaySec.getInput() + "s");
+        } else if ((r == FivePlayerLobby.Role.Limbo || r == FivePlayerLobby.Role.SelfKick) && this.isBeforeWarp()) {
+            this.armed = false;
+            this.pendingActionAt = System.currentTimeMillis() + (long) (this.kickDelaySec.getInput() * 1000.0);
+            this.log(reason + ": " + r.name() + " in " + this.kickDelaySec.getInput() + "s (before warp)");
         } else if (r == FivePlayerLobby.Role.Limbo || r == FivePlayerLobby.Role.SelfKick) {
             this.armed = true;
             this.log(reason + ": armed, " + r.name() + " on next world load");
