@@ -1,8 +1,10 @@
+// Detective tracking and name icons ported from Meowtils (wtf.tatp.meowtils), modified for Feral
 package keystrokesmod.module.impl.minigames;
 
 import java.awt.Color;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
 import keystrokesmod.mixin.impl.accessor.IAccessorMinecraft;
 import keystrokesmod.module.Module;
 import keystrokesmod.module.impl.world.AntiBot;
@@ -21,20 +23,30 @@ import net.minecraft.item.BowItem;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
+import net.minecraft.text.Formatting;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.MathHelper;
 import org.lwjgl.opengl.GL11;
 
 public class MurderMystery extends Module {
     private final ItemListSetting murderWeapons;
+    private static final String MURDERER_ICON =
+            Formatting.DARK_RED.toString() + Formatting.BOLD + " !!" + Formatting.RESET;
+    private static final String DETECTIVE_ICON = Formatting.GOLD + " \u27B9" + Formatting.RESET;
+    private static final int DETECTIVE_COLOR = new Color(255, 170, 0).getRGB();
     private final ButtonSetting alert;
+    private final ButtonSetting alertDetective;
+    private final ButtonSetting nameIcons;
+    private final ButtonSetting highlightDetective;
     private final ButtonSetting highlightMurderer;
     private final ButtonSetting highlightBow;
     private final ButtonSetting highlightInnocent;
     private final ButtonSetting highlightDead;
     private final ButtonSetting goldEsp;
-    private final List<PlayerEntity> murderers = new ArrayList<>();
-    private final List<PlayerEntity> hasBow = new ArrayList<>();
+    // UUIDs, not entities: a player leaving and re-entering render range gets a new entity object.
+    private final Set<UUID> murderers = new HashSet<>();
+    private final Set<UUID> detectives = new HashSet<>();
+    private final Set<UUID> hasBow = new HashSet<>();
     private boolean override;
 
     public MurderMystery() {
@@ -76,7 +88,23 @@ public class MurderMystery extends Module {
         this.addDefaultMurderWeapon(Item.byBlock(Blocks.DOUBLE_PLANT));
         this.addDefaultMurderWeapon(Item.byBlock(Blocks.SPONGE));
         this.addDefaultMurderWeapon(Item.byBlock(Blocks.DEADBUSH));
+        this.addDefaultMurderWeapon(Item.byBlock(Blocks.CHEST));
+        this.addDefaultMurderWeapon(Item.byBlock(Blocks.ENDER_CHEST));
+        this.addDefaultMurderWeapon(Item.byBlock(Blocks.SAPLING));
+        this.addDefaultMurderWeapon(Items.REEDS);
+        this.addDefaultMurderWeapon(Items.LEATHER);
+        this.addDefaultMurderWeapon(Items.COAL);
+        this.addDefaultMurderWeapon(Items.FLINT);
+        this.addDefaultMurderWeapon(Items.RECORD_WARD);
+        this.addDefaultMurderWeapon(Items.GOLDEN_HOE);
+        this.addDefaultMurderWeapon(Items.GOLDEN_AXE);
+        this.addDefaultMurderWeapon(Items.GOLDEN_SHOVEL);
+        this.addDefaultMurderWeapon(Items.DIAMOND_PICKAXE);
+        this.addDefaultMurderWeapon(Items.BREAD);
         this.registerSetting(this.alert = new ButtonSetting("Alert murderer", true));
+        this.registerSetting(this.alertDetective = new ButtonSetting("Alert detective", true));
+        this.registerSetting(this.nameIcons = new ButtonSetting("Name icons", true));
+        this.registerSetting(this.highlightDetective = new ButtonSetting("Highlight detective", true));
         this.registerSetting(this.highlightBow = new ButtonSetting("Highlight bow", true));
         this.registerSetting(this.highlightDead = new ButtonSetting("Highlight dead", true));
         this.registerSetting(this.goldEsp = new ButtonSetting("Gold ingots", true));
@@ -101,34 +129,42 @@ public class MurderMystery extends Module {
                     if (en != mc.player
                             && !en.isInvisible()
                             && (!AntiBot.isBot(en) || this.highlightDead.isToggled())) {
+                        UUID uuid = en.getUuid();
                         if (en.getDisplayItemInHand() != null) {
                             ItemStack heldStack = en.getDisplayItemInHand();
                             Item heldItem = heldStack.getItem();
                             if (this.murderWeapons.matches(heldStack)) {
-                                if (!this.murderers.contains(en)) {
-                                    this.murderers.add(en);
+                                if (this.murderers.add(uuid)) {
+                                    this.detectives.remove(uuid);
+                                    this.hasBow.remove(uuid);
                                     if (this.alert.isToggled()) {
-                                        mc.player.playSound("note.pling", 1.0F, 1.0F);
-                                        Utils.sendMessage("&b"
-                                                + en.getName()
-                                                + " &7is the &cmurderer&7! "
-                                                + Utils.getDistanceColor(mc.player.distanceTo(en))
-                                                + (int) mc.player.distanceTo(en)
-                                                + "m&r");
+                                        this.announce(en, "&cmurderer");
                                     }
                                 }
                             } else if (heldItem instanceof BowItem
-                                    && this.highlightBow.isToggled()
-                                    && !this.hasBow.contains(en)) {
-                                this.hasBow.add(en);
+                                    && !this.murderers.contains(uuid)
+                                    && !this.detectives.contains(uuid)
+                                    && !this.hasBow.contains(uuid)) {
+                                // The detective spawns holding a bow; anyone else only gets one later
+                                // (gold or the detective's dropped bow), so the first bow is the detective.
+                                if (this.detectives.isEmpty()) {
+                                    this.detectives.add(uuid);
+                                    if (this.alertDetective.isToggled()) {
+                                        this.announce(en, "&6detective");
+                                    }
+                                } else {
+                                    this.hasBow.add(uuid);
+                                }
                             }
                         }
 
                         this.override = true;
                         int rgb = Color.green.getRGB();
-                        if (this.murderers.contains(en) && this.highlightMurderer.isToggled()) {
+                        if (this.murderers.contains(uuid) && this.highlightMurderer.isToggled()) {
                             rgb = Color.red.getRGB();
-                        } else if (this.hasBow.contains(en) && this.highlightBow.isToggled()) {
+                        } else if (this.detectives.contains(uuid) && this.highlightDetective.isToggled()) {
+                            rgb = DETECTIVE_COLOR;
+                        } else if (this.hasBow.contains(uuid) && this.highlightBow.isToggled()) {
                             rgb = Color.orange.getRGB();
                         } else if (!this.highlightInnocent.isToggled()) {
                             continue;
@@ -168,6 +204,24 @@ public class MurderMystery extends Module {
                     }
                 }
             }
+        }
+    }
+
+    private void announce(PlayerEntity player, String role) {
+        mc.player.playSound("note.pling", 1.0F, 1.0F);
+        float distance = mc.player.distanceTo(player);
+        Utils.sendMessage("&b" + player.getName() + " &7is the " + role + "&7! " + Utils.getDistanceColor(distance)
+                + (int) distance + "m&r");
+    }
+
+    /** Suffix for nametags and the tab list: "!!" for murderers, a bow for the detective. */
+    public String getNameIcon(UUID uuid) {
+        if (uuid == null || !this.isEnabled() || !this.nameIcons.isToggled()) {
+            return "";
+        } else if (this.murderers.contains(uuid)) {
+            return MURDERER_ICON;
+        } else {
+            return this.detectives.contains(uuid) ? DETECTIVE_ICON : "";
         }
     }
 
@@ -218,12 +272,13 @@ public class MurderMystery extends Module {
     }
 
     public boolean isEmpty() {
-        return this.murderers.isEmpty() && this.hasBow.isEmpty() && !this.override;
+        return this.murderers.isEmpty() && this.detectives.isEmpty() && this.hasBow.isEmpty() && !this.override;
     }
 
     private void clear() {
         this.override = false;
         this.murderers.clear();
+        this.detectives.clear();
         this.hasBow.clear();
     }
 

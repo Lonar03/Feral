@@ -7,6 +7,7 @@ import java.util.Comparator;
 import java.util.List;
 import keystrokesmod.mixin.impl.accessor.IAccessorEntityRenderer;
 import keystrokesmod.module.Module;
+import keystrokesmod.module.ModuleManager;
 import keystrokesmod.module.impl.client.Settings;
 import keystrokesmod.module.impl.world.AntiBot;
 import keystrokesmod.module.setting.impl.ButtonSetting;
@@ -291,6 +292,10 @@ public class Nametags extends Module {
             name = color + entity.getName();
         } else {
             name = entity.getDisplayName().getFormattedString();
+        }
+
+        if (entity instanceof PlayerEntity && ModuleManager.murderMystery != null) {
+            name += ModuleManager.murderMystery.getNameIcon(entity.getUuid());
         }
 
         if (this.showHealth.isToggled()) {

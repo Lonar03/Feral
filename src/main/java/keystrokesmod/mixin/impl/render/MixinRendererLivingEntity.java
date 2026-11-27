@@ -194,6 +194,20 @@ public abstract class MixinRendererLivingEntity<T extends LivingEntity> extends 
         }
     }
 
+    @ModifyVariable(
+            method = "renderNameTag(Lnet/minecraft/entity/living/LivingEntity;DDD)V",
+            at = @At("STORE"),
+            ordinal = 0)
+    private String murderMystery$nametagIcon(String displayName) {
+        if (displayName != null
+                && ModuleManager.murderMystery != null
+                && this.nameHider$renderNameEntity instanceof PlayerEntity) {
+            return displayName + ModuleManager.murderMystery.getNameIcon(this.nameHider$renderNameEntity.getUuid());
+        }
+
+        return displayName;
+    }
+
     @Inject(method = "renderNameTag(Lnet/minecraft/entity/living/LivingEntity;DDD)V", at = @At("RETURN"))
     private void nameHider$clearRenderEntity(T entity, double x, double y, double z, CallbackInfo ci) {
         this.nameHider$renderNameEntity = null;
