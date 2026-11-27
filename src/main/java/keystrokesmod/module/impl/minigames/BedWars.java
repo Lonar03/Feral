@@ -1002,7 +1002,8 @@ public class BedWars extends Module {
         }
 
         if (this.armorReminder.isToggled() && Utils.getBedwarsStatus() == 2 && !this.hasIronArmorOrBetter()) {
-            Utils.sendMessage("&ebuy armor?");
+            Utils.sendMessage("&bbuy armor?");
+            ping();
         }
     }
 
